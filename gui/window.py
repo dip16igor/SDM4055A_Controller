@@ -24,7 +24,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self._device = None  # Will be VisaInterface or VisaSimulator
-        self._use_simulator = True  # Set to False to use real device
+        self._use_simulator = False  # Set to False to use real device
 
         # Timer for periodic polling (500ms)
         self.poll_timer = QTimer()
@@ -56,7 +56,7 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(control_panel)
 
         # Measurement display
-        self.indicator = DigitalIndicator(title="DC Voltage", unit="V")
+        self.indicator = DigitalIndicator(title="DC Voltage")
         main_layout.addWidget(self.indicator)
 
         # Add stretch to push content up
