@@ -238,13 +238,15 @@ class MainWindow(QMainWindow):
         interval_label.setFont(interval_font)
         layout.addWidget(interval_label)
 
-        # Scan interval slider (100ms to 5000ms, default 1000ms)
+        # Scan interval slider (4000ms to 10000ms, default 5000ms)
+        # Minimum 4s because each channel takes ~200ms (100ms switch + 50ms config + 50ms read)
+        # 16 channels * 200ms = 3200ms minimum, plus overhead
         self.interval_slider = QSlider(Qt.Orientation.Horizontal)
-        self.interval_slider.setMinimum(100)
-        self.interval_slider.setMaximum(5000)
-        self.interval_slider.setValue(1000)
+        self.interval_slider.setMinimum(4000)
+        self.interval_slider.setMaximum(10000)
+        self.interval_slider.setValue(5000)
         self.interval_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.interval_slider.setTickInterval(500)
+        self.interval_slider.setTickInterval(1000)
         self.interval_slider.setFixedWidth(200)
         self.interval_slider.valueChanged.connect(self._on_interval_changed)
         self.interval_slider.setStyleSheet("""
@@ -268,7 +270,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.interval_slider)
 
         # Interval value label
-        self.interval_value_label = QLabel("1000 ms")
+        self.interval_value_label = QLabel("5000 ms")
         self.interval_value_label.setStyleSheet("color: #ffffff;")
         self.interval_value_label.setFixedWidth(60)
         interval_value_font = QFont()

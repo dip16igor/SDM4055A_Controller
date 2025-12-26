@@ -165,6 +165,8 @@ class VisaInterface:
 
         try:
             self.instrument.write(f":CONF:{function}")
+            # Add delay to allow measurement function to settle
+            time.sleep(0.05)  # 50ms delay for function settling
             return True
         except pyvisa.Error as e:
             logger.error(f"VISA write error: {e}")
@@ -249,6 +251,8 @@ class VisaInterface:
             # Send channel switching command
             cmd = self.CS1016_CHANNEL_CMD.format(channel=channel_num)
             self.instrument.write(cmd)
+            # Add delay to allow relay switching to complete
+            time.sleep(0.1)  # 100ms delay for relay settling
             logger.debug(f"Switched to channel {channel_num}")
             return True
         except pyvisa.Error as e:
@@ -289,6 +293,9 @@ class VisaInterface:
             # Set measurement function for this channel
             if not self.set_measurement_function(config.measurement_type.value):
                 return None
+
+            # Add small delay before reading to allow measurement to stabilize
+            time.sleep(0.05)  # 50ms delay for measurement stabilization
 
             # Read measurement
             value_str = self.instrument.query(f":MEAS:{config.measurement_type.value}?")
