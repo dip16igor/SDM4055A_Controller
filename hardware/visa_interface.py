@@ -241,15 +241,15 @@ class VisaInterface:
         try:
             # Enable scan mode
             self.instrument.write(":ROUT:SCAN ON")
-            time.sleep(0.1)  # 100ms delay for mode to settle
+            time.sleep(0.2)  # 200ms delay for mode to settle
             
             # Set scan function to STEP
             self.instrument.write(":ROUT:FUNC STEP")
-            time.sleep(0.05)  # 50ms delay
+            time.sleep(0.1)  # 100ms delay
             
             # Turn off auto-zero for faster scanning (optional)
             self.instrument.write(":ROUT:DCV:AZ OFF")
-            time.sleep(0.05)  # 50ms delay
+            time.sleep(0.1)  # 100ms delay
             
             self._scan_mode_enabled = True
             logger.info("Scan mode enabled")
@@ -328,6 +328,8 @@ class VisaInterface:
             if not self.configure_scan_channel(channel_num):
                 logger.error(f"Failed to configure channel {channel_num}")
                 return False
+            # Add delay between channel configurations
+            time.sleep(0.1)  # 100ms delay between channels
         return True
 
     def set_scan_limits(self, low: int = 1, high: int = 16) -> bool:
@@ -352,11 +354,11 @@ class VisaInterface:
         try:
             # Set high limit
             self.instrument.write(f":ROUT:LIMI:HIGH {high}")
-            time.sleep(0.05)  # 50ms delay
+            time.sleep(0.1)  # 100ms delay
             
             # Set low limit
             self.instrument.write(f":ROUT:LIMI:LOW {low}")
-            time.sleep(0.05)  # 50ms delay
+            time.sleep(0.1)  # 100ms delay
             
             logger.info(f"Set scan limits: {low} to {high}")
             return True
@@ -381,11 +383,11 @@ class VisaInterface:
         try:
             # Set scan count to 1 (single scan)
             self.instrument.write(":ROUT:COUN 1")
-            time.sleep(0.05)  # 50ms delay
+            time.sleep(0.1)  # 100ms delay
             
             # Start scan
             self.instrument.write(":ROUT:START ON")
-            time.sleep(0.1)  # 100ms delay for scan to start
+            time.sleep(0.2)  # 200ms delay for scan to start
             
             logger.info("Scan started")
             return True

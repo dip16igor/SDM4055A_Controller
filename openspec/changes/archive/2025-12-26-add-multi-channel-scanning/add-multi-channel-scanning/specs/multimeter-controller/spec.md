@@ -1,6 +1,6 @@
 ## MODIFIED Requirements
 
-### Requirement: Measurement Reading
+### Requirement: Multi-Channel Measurement Reading
 The system SHALL read measurement data from multiple channels of the SDM4055A-SC multimeter with CS1016 scanning card at configurable intervals.
 
 #### Scenario: Read single channel measurement
