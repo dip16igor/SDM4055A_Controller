@@ -45,9 +45,6 @@ class ChannelConfig:
 class VisaInterface:
     """Interface for communicating with SDM4055A-SC multimeter via VISA with CS1016 scanning card support."""
 
-    # CS1016 card channel switching command format
-    CS1016_CHANNEL_CMD = ":ROUT:CLOS (@{channel})"
-
     def __init__(self, resource_string: str = ""):
         """
         Initialize VISA interface.
@@ -60,7 +57,7 @@ class VisaInterface:
         self.rm: Optional[pyvisa.ResourceManager] = None
         self.instrument: Optional[pyvisa.resources.MessageBasedResource] = None
         self._connected = False
-        self._cs1016_detected = False
+        self._scan_mode_enabled = False
         
         # Channel configurations (1-16)
         self._channel_configs: Dict[int, ChannelConfig] = {}
@@ -68,7 +65,7 @@ class VisaInterface:
 
     def connect(self) -> bool:
         """
-        Establish connection to the multimeter.
+        Establish connection to multimeter.
 
         Returns:
             True if connection successful, False otherwise.
@@ -106,7 +103,7 @@ class VisaInterface:
             return False
 
     def disconnect(self) -> None:
-        """Terminate connection to the multimeter."""
+        """Terminate connection to multimeter."""
         try:
             if self.instrument:
                 self.instrument.close()
@@ -115,6 +112,7 @@ class VisaInterface:
                 self.rm.close()
                 self.rm = None
             self._connected = False
+            self._scan_mode_enabled = False
             logger.info("Disconnected from device")
         except Exception as e:
             logger.error(f"Error during disconnection: {e}")
@@ -125,7 +123,7 @@ class VisaInterface:
 
     def read_measurement(self) -> Optional[float]:
         """
-        Read measurement value from the device.
+        Read measurement value from device.
 
         Returns:
             Measurement value as float, or None if read failed.
@@ -229,9 +227,43 @@ class VisaInterface:
         logger.info(f"Set channel {channel_num} to {measurement_type.value}")
         return True
 
-    def switch_channel(self, channel_num: int) -> bool:
+    def enable_scan_mode(self) -> bool:
         """
-        Switch to a specific channel using CS1016 card.
+        Enable CS1016 scan mode.
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        if not self._connected or not self.instrument:
+            logger.warning("Attempted to enable scan mode while not connected")
+            return False
+
+        try:
+            # Enable scan mode
+            self.instrument.write(":ROUT:SCAN ON")
+            time.sleep(0.1)  # 100ms delay for mode to settle
+            
+            # Set scan function to STEP
+            self.instrument.write(":ROUT:FUNC STEP")
+            time.sleep(0.05)  # 50ms delay
+            
+            # Turn off auto-zero for faster scanning (optional)
+            self.instrument.write(":ROUT:DCV:AZ OFF")
+            time.sleep(0.05)  # 50ms delay
+            
+            self._scan_mode_enabled = True
+            logger.info("Scan mode enabled")
+            return True
+        except pyvisa.Error as e:
+            logger.error(f"VISA scan mode enable error: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error during scan mode enable: {e}")
+            return False
+
+    def configure_scan_channel(self, channel_num: int) -> bool:
+        """
+        Configure a specific channel for scanning.
 
         Args:
             channel_num: Channel number (1-16).
@@ -240,31 +272,155 @@ class VisaInterface:
             True if successful, False otherwise.
         """
         if not self._connected or not self.instrument:
-            logger.warning("Attempted to switch channel while not connected")
+            logger.warning("Attempted to configure channel while not connected")
             return False
 
         if channel_num < 1 or channel_num > 16:
             logger.error(f"Invalid channel number: {channel_num}")
             return False
 
-        try:
-            # Send channel switching command
-            cmd = self.CS1016_CHANNEL_CMD.format(channel=channel_num)
-            self.instrument.write(cmd)
-            # Add delay to allow relay switching to complete
-            time.sleep(0.1)  # 100ms delay for relay settling
-            logger.debug(f"Switched to channel {channel_num}")
-            return True
-        except pyvisa.Error as e:
-            logger.error(f"VISA channel switch error: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Unexpected error during channel switch: {e}")
+        config = self._channel_configs.get(channel_num)
+        if not config:
+            logger.error(f"No configuration for channel {channel_num}")
             return False
 
-    def read_channel_measurement(self, channel_num: int) -> Optional[float]:
+        try:
+            # Convert MeasurementType to CS1016 channel type
+            type_map = {
+                MeasurementType.VOLTAGE_DC: "DCV",
+                MeasurementType.VOLTAGE_AC: "ACV",
+                MeasurementType.CURRENT_DC: "DCA",
+                MeasurementType.CURRENT_AC: "ACA",
+                MeasurementType.RESISTANCE_2WIRE: "RES",
+                MeasurementType.RESISTANCE_4WIRE: "RES",
+                MeasurementType.CAPACITANCE: "CAP",
+                MeasurementType.FREQUENCY: "FREQ",
+                MeasurementType.DIODE: "DIOD",
+                MeasurementType.CONTINUITY: "CONT",
+                MeasurementType.TEMP_RTD: "RTD",
+                MeasurementType.TEMP_THERMOCOUPLE: "THER",
+            }
+            
+            channel_type = type_map.get(config.measurement_type, "DCV")
+            
+            # Configure channel: ROUT:CHAN <ch>,ON,<type>,AUTO,FAST
+            cmd = f":ROUT:CHAN {channel_num},ON,{channel_type},AUTO,FAST"
+            self.instrument.write(cmd)
+            time.sleep(0.05)  # 50ms delay
+            
+            logger.debug(f"Configured channel {channel_num} as {channel_type}")
+            return True
+        except pyvisa.Error as e:
+            logger.error(f"VISA channel configuration error: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error during channel configuration: {e}")
+            return False
+
+    def configure_all_scan_channels(self) -> bool:
         """
-        Read measurement from a specific channel.
+        Configure all channels for scanning.
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        for channel_num in range(1, 17):
+            if not self.configure_scan_channel(channel_num):
+                logger.error(f"Failed to configure channel {channel_num}")
+                return False
+        return True
+
+    def set_scan_limits(self, low: int = 1, high: int = 16) -> bool:
+        """
+        Set scan limits (channel range).
+
+        Args:
+            low: Lowest channel number (1-16).
+            high: Highest channel number (1-16).
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        if not self._connected or not self.instrument:
+            logger.warning("Attempted to set scan limits while not connected")
+            return False
+
+        if low < 1 or low > 16 or high < 1 or high > 16 or low > high:
+            logger.error(f"Invalid scan limits: low={low}, high={high}")
+            return False
+
+        try:
+            # Set high limit
+            self.instrument.write(f":ROUT:LIMI:HIGH {high}")
+            time.sleep(0.05)  # 50ms delay
+            
+            # Set low limit
+            self.instrument.write(f":ROUT:LIMI:LOW {low}")
+            time.sleep(0.05)  # 50ms delay
+            
+            logger.info(f"Set scan limits: {low} to {high}")
+            return True
+        except pyvisa.Error as e:
+            logger.error(f"VISA scan limits error: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error during scan limits set: {e}")
+            return False
+
+    def start_scan(self) -> bool:
+        """
+        Start scanning.
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        if not self._connected or not self.instrument:
+            logger.warning("Attempted to start scan while not connected")
+            return False
+
+        try:
+            # Set scan count to 1 (single scan)
+            self.instrument.write(":ROUT:COUN 1")
+            time.sleep(0.05)  # 50ms delay
+            
+            # Start scan
+            self.instrument.write(":ROUT:START ON")
+            time.sleep(0.1)  # 100ms delay for scan to start
+            
+            logger.info("Scan started")
+            return True
+        except pyvisa.Error as e:
+            logger.error(f"VISA scan start error: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error during scan start: {e}")
+            return False
+
+    def is_scan_complete(self) -> bool:
+        """
+        Check if scan is complete.
+
+        Returns:
+            True if scan is complete, False if still scanning.
+        """
+        if not self._connected or not self.instrument:
+            logger.warning("Attempted to check scan status while not connected")
+            return False
+
+        try:
+            # Query scan status
+            response = self.instrument.query(":ROUT:START?")
+            return response.strip() == "OFF"
+        except pyvisa.Error as e:
+            logger.error(f"VISA scan status error: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error during scan status check: {e}")
+            return False
+
+    def get_scan_data(self, channel_num: int) -> Optional[float]:
+        """
+        Get scan data for a specific channel.
 
         Args:
             channel_num: Channel number (1-16).
@@ -273,55 +429,84 @@ class VisaInterface:
             Measurement value as float, or None if read failed.
         """
         if not self._connected or not self.instrument:
-            logger.warning("Attempted to read while not connected")
+            logger.warning("Attempted to get scan data while not connected")
             return None
 
         if channel_num < 1 or channel_num > 16:
             logger.error(f"Invalid channel number: {channel_num}")
             return None
 
-        config = self._channel_configs.get(channel_num)
-        if not config:
-            logger.error(f"No configuration for channel {channel_num}")
-            return None
-
         try:
-            # Switch to channel
-            if not self.switch_channel(channel_num):
-                return None
-
-            # Set measurement function for this channel
-            if not self.set_measurement_function(config.measurement_type.value):
-                return None
-
-            # Add small delay before reading to allow measurement to stabilize
-            time.sleep(0.05)  # 50ms delay for measurement stabilization
-
-            # Read measurement
-            value_str = self.instrument.query(f":MEAS:{config.measurement_type.value}?")
-            value = float(value_str.strip())
+            # Query scan data for channel
+            response = self.instrument.query(f":ROUT:DATA? {channel_num}")
+            
+            # Parse the response - it may contain unit suffix (e.g., "-4.24124300E-04 VDC")
+            # Extract only the numeric part before any space
+            value_str = response.strip().split()[0]
+            value = float(value_str)
             return value
         except pyvisa.Error as e:
-            logger.error(f"VISA read error on channel {channel_num}: {e}")
+            logger.error(f"VISA scan data error on channel {channel_num}: {e}")
             return None
         except ValueError as e:
             logger.error(f"Value conversion error on channel {channel_num}: {e}")
             return None
         except Exception as e:
-            logger.error(f"Unexpected error during read on channel {channel_num}: {e}")
+            logger.error(f"Unexpected error during scan data retrieval on channel {channel_num}: {e}")
             return None
 
     def read_all_channels(self) -> Dict[int, Optional[float]]:
         """
-        Read measurements from all 16 channels sequentially.
+        Read measurements from all 16 channels using CS1016 scan mode.
 
         Returns:
             Dictionary mapping channel numbers to measurement values (or None if failed).
         """
-        results = {}
-        for channel_num in range(1, 17):
-            results[channel_num] = self.read_channel_measurement(channel_num)
-        return results
+        if not self._connected or not self.instrument:
+            logger.warning("Attempted to read while not connected")
+            return {}
+
+        try:
+            # Enable scan mode if not already enabled
+            if not self._scan_mode_enabled:
+                if not self.enable_scan_mode():
+                    logger.error("Failed to enable scan mode")
+                    return {}
+            
+            # Configure all channels
+            if not self.configure_all_scan_channels():
+                logger.error("Failed to configure channels")
+                return {}
+            
+            # Set scan limits (all 16 channels)
+            if not self.set_scan_limits(1, 16):
+                logger.error("Failed to set scan limits")
+                return {}
+            
+            # Start scan
+            if not self.start_scan():
+                logger.error("Failed to start scan")
+                return {}
+            
+            # Wait for scan to complete
+            max_wait_time = 30  # 30 seconds maximum wait time
+            start_time = time.time()
+            while time.time() - start_time < max_wait_time:
+                if self.is_scan_complete():
+                    break
+                time.sleep(0.1)  # Poll every 100ms
+            else:
+                logger.warning("Scan timeout - may not have completed")
+            
+            # Read data from all channels
+            results = {}
+            for channel_num in range(1, 17):
+                results[channel_num] = self.get_scan_data(channel_num)
+            
+            return results
+        except Exception as e:
+            logger.error(f"Unexpected error during multi-channel scan: {e}")
+            return {}
 
     def get_device_address(self) -> str:
         """
