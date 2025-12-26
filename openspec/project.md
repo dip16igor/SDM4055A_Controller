@@ -1,21 +1,22 @@
 # Project Context
 
 ## Purpose
-The SDM4055A_Controller is a Python-based GUI application for communicating with and reading measurements from the SDM4055A power/energy meter device via USB connection using the VISA protocol.
+The SDM4055A_Controller is a Python-based GUI application for communicating with and reading measurements from the Siglent SDM4055A-SC 5½ digit digital multimeter via USB connection using the VISA protocol.
 
 ### Initial Phase (MVP)
 The first version focuses on a simple test application to:
-- Establish USB connection to the SDM4055A multimeter
+- Establish USB connection to the SDM4055A-SC multimeter
 - Read measurement data from one channel (connected to standard probes)
 - Display the measured value on a modern digital indicator
 - Verify basic communication and data retrieval functionality
 
 ### Future Phases
-- Multi-channel monitoring
-- Historical data logging
-- Advanced measurement parameters (power, energy, frequency)
+- Multi-channel monitoring using the SC1016 scanner card (16 channels: 12 multi-purpose + 4 current)
+- Historical data logging and analysis
+- Advanced measurement parameters (all supported functions)
 - Configuration and calibration features
 - Data export capabilities
+- Remote monitoring via VNC/web server integration
 
 ## Tech Stack
 - **Language**: Python 3.10+
@@ -71,7 +72,7 @@ The first version focuses on a simple test application to:
 - **GUI Tests**: Test UI components and user interactions
 - **Test Framework**: `pytest` with `pytest-qt` for GUI testing and `pytest-mock` for mocking
 - **Coverage**: Aim for >80% code coverage for core functionality
-- **Hardware Testing**: Document procedures for testing with actual SDM4055A device
+- **Hardware Testing**: Document procedures for testing with actual SDM4055A-SC device
 
 ### Git Workflow
 - **Branching Strategy**: Feature branch workflow
@@ -88,35 +89,70 @@ The first version focuses on a simple test application to:
 - **Pull Requests**: Required for merging into `develop` or `main`
 
 ## Domain Context
-The SDM4055A is a digital power meter that measures electrical parameters including:
-- Voltage (V): AC voltage measurements
-- Current (A): AC current measurements
-- Power (W, kW, VA, VAR): Active, reactive, and apparent power
-- Energy (kWh, kVARh): Accumulated energy consumption
-- Power Factor (PF): Ratio of real to apparent power
-- Frequency (Hz): Line frequency
+
+### Device Overview
+The **Siglent SDM4055A-SC** is a 5½ digit (220,000 count) high-precision digital multimeter with outstanding measurement accuracy and a 5-inch TFT touchscreen display. It is designed for high-precision, multifunctional, and automatic measurement needs in research laboratories, development laboratories, repair and maintenance, calibration laboratories, and automatic production testing.
+
+### Key Specifications
+- **Display Resolution**: Real 5½ digit (220,000 count) readings
+- **DCV Basic Accuracy**: 150 ppm
+- **Max Reading Rate**: 4,800 rdgs/s (configurable: 5 rdgs/s to 4.8k rdgs/s)
+- **Memory**: 512 MB RAM (up to 2M readings for caching), 256 MB NAND Flash for file storage
+- **Display**: 5-inch TFT-LCD touchscreen (800×480 resolution)
+- **Communication**: SCPI-compliant remote control commands
+- **Scanner Card**: SC1016 (12 multi-purpose + 4 current channels) - SDM4055A-SC model only
+
+### Supported Measurement Functions
+1. **DC Voltage (DCV)**: 200 mV ~ 1000 V
+2. **AC Voltage (ACV)**: 200 mV ~ 750 V, 20 Hz ~ 100 kHz (True-RMS)
+3. **DC Current (DCI)**: 200 μA ~ 10 A
+4. **AC Current (ACI)**: 20 mA ~ 10 A, 20 Hz ~ 10 kHz (True-RMS)
+5. **2/4-Wire Resistance**: 200 Ω ~ 100 MΩ
+6. **Capacitance**: 2 nF ~ 10 mF
+7. **Frequency / Period**: 20 Hz ~ 1 MHz
+8. **Temperature**: RTD (Pt100), Thermocouple (B, E, J, K, N, R, S, T types)
+9. **Continuity Test**: With buzzer
+10. **Diode Test**: 4 V max
+
+### Advanced Features
+- **Trigger Modes**: Auto trigger, single trigger, external trigger, level trigger
+- **Display Modes**: Numerical, bar meter, trend chart, histogram
+- **Math Functions**: Max, Min, Average, Standard Deviation, dBm/dB, Limits
+- **Data Log**: 0.1 s ~ 3600 s interval, up to 2M points to memory, 360M points to files
+- **Automatic Current Switching**: 10 A high current and 3 A low current modes (up to 30 A with external shunt)
+- **Dual Display**: Simultaneous display of two measurements
+- **Probe Hold**: Hold measurement values
+- **Measurement Speed Modes**: Fast, Medium, Slow
+
+### Communication Interfaces
+- **USB Device**: Primary connection for PC control
+- **USB Host**: For external storage devices
+- **LAN**: Ethernet connectivity
+- **GPIB**: Optional (requires USB-GPIB adapter)
+- **Remote Access**: VNC and web server support
 
 ### Initial Phase Scope
 For the MVP, we focus on:
-- **Single Channel**: Reading from one measurement channel (standard probe connection)
-- **Basic Measurement**: Primary measurement type (typically voltage or current based on probe configuration)
+- **Single Channel**: Reading from one measurement channel (standard probe connection to front panel)
+- **Basic Measurement**: Primary measurement type (typically DC voltage or current based on probe configuration)
 - **Connection Test**: Verify USB/VISA communication establishment
 - **Real-time Display**: Show current measurement value with modern UI
 
-The device communicates via USB using the VISA protocol, which is an industry standard for instrument control. VISA provides a unified API for communicating with various test and measurement instruments, regardless of the underlying bus (USB, GPIB, Ethernet, Serial). The application uses PyVISA, a Python wrapper around the VISA library, to communicate with the device.
+The device communicates via USB using the VISA protocol, which is an industry standard for instrument control. VISA provides a unified API for communicating with various test and measurement instruments, regardless of the underlying bus (USB, GPIB, Ethernet, Serial). The application uses PyVISA, a Python wrapper around the VISA library, to communicate with the device. The SDM4055A-SC supports SCPI (Standard Commands for Programmable Instruments) commands for remote control.
 
 ## Important Constraints
 - **USB Port Availability**: Requires exclusive access to USB port during operation
 - **VISA Driver**: Must have appropriate VISA runtime and device drivers installed (e.g., NI-VISA, Keysight VISA)
-- **Timing Constraints**: Polling interval (default 500ms) balances responsiveness with system resources
+- **Timing Constraints**: Polling interval (default 500ms) balances responsiveness with system resources; device supports up to 4,800 rdgs/s
 - **GUI Thread**: Data acquisition runs on main UI thread via QTimer; avoid blocking operations
-- **Hardware Compatibility**: Must work with SDM4055A device specifications and VISA resource strings
+- **Hardware Compatibility**: Must work with SDM4055A-SC device specifications and VISA resource strings
 - **Error Recovery**: Must handle communication failures gracefully (timeouts, disconnections)
 - **Cross-Platform**: Application should work on Windows (primary target), Linux, and macOS with appropriate VISA drivers
 - **Packaging**: PyInstaller must include hidden imports (`qt_material`) and data files (`gui`, `hardware` directories)
+- **Scanner Card**: When using SC1016 scanner card, front panel inputs must be floating to avoid damage
 
 ## External Dependencies
-- **Hardware**: SDM4055A power/energy meter device with USB interface
+- **Hardware**: Siglent SDM4055A-SC 5½ digit digital multimeter with USB interface
 - **VISA Runtime**: NI-VISA, Keysight VISA, or compatible VISA implementation
 - **USB Drivers**: Device-specific USB drivers if required by the meter
 - **Python Packages**:
