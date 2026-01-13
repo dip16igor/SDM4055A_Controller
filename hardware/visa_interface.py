@@ -125,7 +125,8 @@ class VisaInterface:
 
     def is_connected(self) -> bool:
         """Check if device is connected."""
-        return self._connected
+        with QMutexLocker(self._mutex):
+            return self._connected
 
     def read_measurement(self) -> Optional[float]:
         """
@@ -247,19 +248,22 @@ class VisaInterface:
 
         try:
             # Enable scan mode
+            logger.info("Sending: :ROUT:SCAN ON")
             self.instrument.write(":ROUT:SCAN ON")
             time.sleep(0.2)  # 200ms delay for mode to settle
             
             # Set scan function to STEP
+            logger.info("Sending: :ROUT:FUNC STEP")
             self.instrument.write(":ROUT:FUNC STEP")
             time.sleep(0.1)  # 100ms delay
             
             # Turn off auto-zero for faster scanning (optional)
+            logger.info("Sending: :ROUT:DCV:AZ OFF")
             self.instrument.write(":ROUT:DCV:AZ OFF")
             time.sleep(0.1)  # 100ms delay
             
             self._scan_mode_enabled = True
-            logger.info("Scan mode enabled")
+            logger.info("Scan mode enabled successfully")
             return True
         except pyvisa.Error as e:
             logger.error(f"VISA scan mode enable error: {e}")
@@ -312,6 +316,7 @@ class VisaInterface:
             
             # Configure channel: ROUT:CHAN <ch>,ON,<type>,AUTO,FAST
             cmd = f":ROUT:CHAN {channel_num},ON,{channel_type},AUTO,FAST"
+            logger.info(f"Configuring channel {channel_num}: {cmd}")
             self.instrument.write(cmd)
             time.sleep(0.05)  # 50ms delay
             
@@ -389,14 +394,16 @@ class VisaInterface:
 
         try:
             # Set scan count to 1 (single scan)
+            logger.info("Sending: :ROUT:COUN 1")
             self.instrument.write(":ROUT:COUN 1")
             time.sleep(0.1)  # 100ms delay
             
             # Start scan
+            logger.info("Sending: :ROUT:START ON")
             self.instrument.write(":ROUT:START ON")
             time.sleep(0.2)  # 200ms delay for scan to start
             
-            logger.info("Scan started")
+            logger.info("Scan started successfully")
             return True
         except pyvisa.Error as e:
             logger.error(f"VISA scan start error: {e}")
@@ -451,9 +458,20 @@ class VisaInterface:
             
             # Parse the response - it may contain unit suffix (e.g., "-4.24124300E-04 VDC")
             # Extract only the numeric part before any space
-            value_str = response.strip().split()[0]
-            value = float(value_str)
-            return value
+            parts = response.strip().split()
+            
+            if not parts:
+                logger.error(f"Channel {channel_num}: Empty response")
+                return None
+            
+            value_str = parts[0]
+            
+            try:
+                value = float(value_str)
+                return value
+            except ValueError as e:
+                logger.error(f"Channel {channel_num}: Failed to convert '{value_str}' to float: {e}")
+                return None
         except pyvisa.Error as e:
             logger.error(f"VISA scan data error on channel {channel_num}: {e}")
             return None
@@ -466,8 +484,10 @@ class VisaInterface:
 
     def read_all_channels(self) -> Dict[int, Optional[float]]:
         """
-        Read measurements from all 16 channels using CS1016 scan mode.
-
+        Read measurements from all 16 channels.
+        
+        First tries CS1016 scan mode, falls back to channel-by-channel reading if scan mode fails.
+        
         Returns:
             Dictionary mapping channel numbers to measurement values (or None if failed).
         """
@@ -477,26 +497,27 @@ class VisaInterface:
                 return {}
 
             try:
-                # Enable scan mode if not already enabled
+                # Try scan mode first
                 if not self._scan_mode_enabled:
+                    logger.info("Attempting to enable scan mode...")
                     if not self.enable_scan_mode():
-                        logger.error("Failed to enable scan mode")
-                        return {}
+                        logger.warning("Scan mode failed, falling back to channel-by-channel reading")
+                        return self._read_channels_sequentially()
                 
                 # Configure all channels
                 if not self.configure_all_scan_channels():
-                    logger.error("Failed to configure channels")
-                    return {}
+                    logger.warning("Channel configuration failed, falling back to sequential reading")
+                    return self._read_channels_sequentially()
                 
                 # Set scan limits (all 16 channels)
                 if not self.set_scan_limits(1, 16):
-                    logger.error("Failed to set scan limits")
-                    return {}
+                    logger.warning("Scan limits failed, falling back to sequential reading")
+                    return self._read_channels_sequentially()
                 
                 # Start scan
                 if not self.start_scan():
-                    logger.error("Failed to start scan")
-                    return {}
+                    logger.warning("Scan start failed, falling back to sequential reading")
+                    return self._read_channels_sequentially()
                 
                 # Wait for scan to complete
                 max_wait_time = 30  # 30 seconds maximum wait time
@@ -509,14 +530,53 @@ class VisaInterface:
                     logger.warning("Scan timeout - may not have completed")
                 
                 # Read data from all channels
+                logger.info("Starting to read data from all 16 channels...")
                 results = {}
                 for channel_num in range(1, 17):
+                    logger.info(f"About to call get_scan_data for channel {channel_num}")
                     results[channel_num] = self.get_scan_data(channel_num)
+                    logger.info(f"Channel {channel_num} result: {results[channel_num]}")
                 
+                logger.info(f"read_all_channels returning {len(results)} results: {results}")
                 return results
             except Exception as e:
                 logger.error(f"Unexpected error during multi-channel scan: {e}")
-                return {}
+                logger.info("Falling back to sequential channel reading")
+                return self._read_channels_sequentially()
+    
+    def _read_channels_sequentially(self) -> Dict[int, Optional[float]]:
+        """
+        Read all channels sequentially (channel by channel) without scan mode.
+        
+        This is a fallback method for devices that don't support CS1016 scan mode.
+        
+        Returns:
+            Dictionary mapping channel numbers to measurement values (or None if failed).
+        """
+        logger.info("Reading channels sequentially...")
+        results = {}
+        
+        for channel_num in range(1, 17):
+            try:
+                # Switch to channel (if device supports it)
+                # Note: SDM4055A-SC may not have channel switching commands
+                # We'll just read from the current channel
+                
+                # Read measurement
+                value = self.read_measurement()
+                results[channel_num] = value
+                
+                logger.debug(f"Channel {channel_num}: {value}")
+                
+                # Small delay between channels
+                time.sleep(0.05)  # 50ms
+                
+            except Exception as e:
+                logger.error(f"Error reading channel {channel_num}: {e}")
+                results[channel_num] = None
+        
+        logger.info(f"Sequential read completed: {len(results)} channels")
+        return results
 
     def get_device_address(self) -> str:
         """

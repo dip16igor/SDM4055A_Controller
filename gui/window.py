@@ -1,565 +1,296 @@
 """
-Main application window for SDM4055A-SC multimeter controller with multi-channel scanning support.
+Main application window for SDM4055A-SC multimeter controller.
 """
-
-from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QFrame, QSlider, QGridLayout, QScrollArea
-)
-from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QFont
 import logging
+from typing import Dict, List, Optional
 
-from .widgets import DigitalIndicator, ChannelIndicator
-from hardware import VisaInterface, VisaSimulator, MeasurementType, AsyncScanManager
+from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtGui import QAction
+from PySide6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QStatusBar,
+    QToolBar,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel,
+    QMessageBox,
+    QComboBox,
+    QGroupBox,
+    QGridLayout,
+)
+
+from hardware.visa_interface import VisaInterface
+from hardware.async_worker import AsyncScanManager
+from gui.widgets import ChannelIndicator
 
 logger = logging.getLogger(__name__)
 
 
 class MainWindow(QMainWindow):
-    """Main window for the multimeter controller application with multi-channel scanning."""
+    """Main application window."""
 
-    def __init__(self):
+    # Signals for thread-safe UI updates
+    status_updated = Signal(str)
+    connection_changed = Signal(bool)
+    scan_started = Signal()
+    scan_complete = Signal(object)
+
+    def __init__(self, parent: Optional[QObject] = None) -> None:
         """Initialize main window."""
-        super().__init__()
+        super().__init__(parent)
+        self.setWindowTitle("SDM4055A-SC Multimeter Controller")
+        self.resize(1200, 800)
 
-        self._device = None  # Will be VisaInterface or VisaSimulator
-        self._use_simulator = False  # Set to False to use real device
+        # Initialize VISA interface
+        self.visa = VisaInterface()
 
-        # Async scan manager for non-blocking scanning
-        self._scan_manager: AsyncScanManager = None
+        # Async scan manager
+        self.scan_manager: Optional[AsyncScanManager] = None
 
         # Channel indicators (1-16)
-        self._channel_indicators = {}
-        self._scanning = False
-        
-        # Activity indicator animation timer
-        self._activity_timer = QTimer()
-        self._activity_timer.timeout.connect(self._update_activity_indicator)
-        self._activity_symbols = ["●", "○", "◎", "◉"]
-        self._activity_index = 0
+        self.channel_indicators: List[ChannelIndicator] = []
 
+        # Setup UI
         self._setup_ui()
-        self._initialize_device()
+        self._setup_connections()
+
+        # Initial status
+        self.status_updated.emit("Ready")
 
     def _setup_ui(self) -> None:
-        """Setup the main window UI."""
-        self.setWindowTitle("SDM4055A-SC Multi-Channel Controller")
-        self.setMinimumSize(1200, 800)
-
-        # Central widget
+        """Setup user interface."""
+        # Create central widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
         # Main layout
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(20)
 
-        # Header with device address
-        header = self._create_header()
-        main_layout.addWidget(header)
+        # Connection control group
+        conn_group = QGroupBox("Device Connection")
+        conn_layout = QHBoxLayout()
 
-        # Control panel
-        control_panel = self._create_control_panel()
-        main_layout.addWidget(control_panel)
+        self.btn_connect = QPushButton("Connect")
+        self.btn_connect.clicked.connect(self._on_connect_clicked)
 
-        # Channel grid (scrollable)
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet("""
-            QScrollArea {
-                border: none;
-                background-color: transparent;
-            }
-        """)
-        
-        scroll_widget = QWidget()
-        self._channel_grid = QGridLayout(scroll_widget)
-        self._channel_grid.setSpacing(15)
-        
-        # Create 16 channel indicators in a 4x4 grid
-        for i in range(1, 17):
-            indicator = ChannelIndicator(i)
-            indicator.measurement_type_changed.connect(self._on_measurement_type_changed)
-            self._channel_indicators[i] = indicator
-            
-            # Calculate grid position (4 columns)
-            row = (i - 1) // 4
-            col = (i - 1) % 4
-            self._channel_grid.addWidget(indicator, row, col)
-        
-        scroll_area.setWidget(scroll_widget)
-        main_layout.addWidget(scroll_area)
+        self.btn_disconnect = QPushButton("Disconnect")
+        self.btn_disconnect.clicked.connect(self._on_disconnect_clicked)
+        self.btn_disconnect.setEnabled(False)
 
-    def _create_header(self) -> QFrame:
-        """Create application header with device address."""
-        header = QFrame()
-        header.setStyleSheet("""
-            QFrame {
-                background-color: #1a1a1a;
-                border-radius: 8px;
-                padding: 10px;
-            }
-        """)
-
-        layout = QHBoxLayout(header)
-        layout.setContentsMargins(15, 10, 15, 10)
-
-        title = QLabel("SDM4055A-SC Multi-Channel Controller")
-        title.setStyleSheet("color: #ffffff;")
-        title_font = QFont()
-        title_font.setPointSize(18)
-        title_font.setBold(True)
-        title.setFont(title_font)
-
-        layout.addWidget(title)
-        layout.addStretch()
-
-        # Device address label
-        self.device_address_label = QLabel("Device: Not connected")
-        self.device_address_label.setStyleSheet("color: #aaaaaa;")
-        address_font = QFont()
-        address_font.setPointSize(11)
-        self.device_address_label.setFont(address_font)
-        layout.addWidget(self.device_address_label)
-
-        return header
-
-    def _create_control_panel(self) -> QFrame:
-        """Create control panel with connection, scanning controls, and interval slider."""
-        panel = QFrame()
-        panel.setStyleSheet("""
-            QFrame {
-                background-color: #252525;
-                border-radius: 8px;
-                padding: 10px;
-            }
-        """)
-
-        layout = QHBoxLayout(panel)
-        layout.setContentsMargins(15, 10, 15, 10)
-
-        # Connection button
-        self.connect_button = QPushButton("Connect")
-        self.connect_button.setFixedWidth(120)
-        self.connect_button.clicked.connect(self._toggle_connection)
-        self.connect_button.setStyleSheet("""
-            QPushButton {
-                background-color: #4a9eff;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #5aaaff;
-            }
-            QPushButton:pressed {
-                background-color: #3a8eef;
-            }
-            QPushButton:disabled {
-                background-color: #555555;
-                color: #888888;
-            }
-        """)
-
-        # Status label
         self.status_label = QLabel("Disconnected")
-        self.status_label.setStyleSheet("color: #ff6b6b;")
-        status_font = QFont()
-        status_font.setPointSize(11)
-        self.status_label.setFont(status_font)
+        self.status_label.setStyleSheet("color: #ff6b6b; font-weight: bold;")
 
-        layout.addWidget(self.connect_button)
-        layout.addWidget(self.status_label)
-        layout.addSpacing(30)
+        conn_layout.addWidget(self.btn_connect)
+        conn_layout.addWidget(self.btn_disconnect)
+        conn_layout.addWidget(self.status_label)
+        conn_layout.addStretch()
 
-        # START button
-        self.start_button = QPushButton("START")
-        self.start_button.setFixedWidth(100)
-        self.start_button.clicked.connect(self._start_scanning)
-        self.start_button.setEnabled(False)
-        self.start_button.setStyleSheet("""
-            QPushButton {
-                background-color: #51cf66;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #61df76;
-            }
-            QPushButton:pressed {
-                background-color: #41bf56;
-            }
-            QPushButton:disabled {
-                background-color: #555555;
-                color: #888888;
-            }
-        """)
+        conn_group.setLayout(conn_layout)
+        main_layout.addWidget(conn_group)
 
-        # STOP button
-        self.stop_button = QPushButton("STOP")
-        self.stop_button.setFixedWidth(100)
-        self.stop_button.clicked.connect(self._stop_scanning)
-        self.stop_button.setEnabled(False)
-        self.stop_button.setStyleSheet("""
-            QPushButton {
-                background-color: #ff6b6b;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #ff7b7b;
-            }
-            QPushButton:pressed {
-                background-color: #ef5b5b;
-            }
-            QPushButton:disabled {
-                background-color: #555555;
-                color: #888888;
-            }
-        """)
+        # Scan control group
+        scan_group = QGroupBox("Scan Control")
+        scan_layout = QHBoxLayout()
 
-        layout.addWidget(self.start_button)
-        layout.addWidget(self.stop_button)
-        layout.addSpacing(30)
+        self.btn_start_scan = QPushButton("Start Scan")
+        self.btn_start_scan.clicked.connect(self._start_scanning)
+        self.btn_start_scan.setEnabled(False)
 
-        # Scan interval label
-        interval_label = QLabel("Scan Interval:")
-        interval_label.setStyleSheet("color: #ffffff;")
-        interval_font = QFont()
-        interval_font.setPointSize(11)
-        interval_label.setFont(interval_font)
-        layout.addWidget(interval_label)
+        self.btn_stop_scan = QPushButton("Stop Scan")
+        self.btn_stop_scan.clicked.connect(self._stop_scanning)
+        self.btn_stop_scan.setEnabled(False)
 
-        # Scan interval slider (1000ms to 10000ms, default 2000ms)
-        # Using CS1016 scan mode is much faster than manual channel switching
-        self.interval_slider = QSlider(Qt.Orientation.Horizontal)
-        self.interval_slider.setMinimum(1000)
-        self.interval_slider.setMaximum(10000)
-        self.interval_slider.setValue(2000)
-        self.interval_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.interval_slider.setTickInterval(1000)
-        self.interval_slider.setFixedWidth(200)
-        self.interval_slider.valueChanged.connect(self._on_interval_changed)
-        self.interval_slider.setStyleSheet("""
-            QSlider::groove:horizontal {
-                height: 8px;
-                background: #3d3d3d;
-                border-radius: 4px;
-            }
-            QSlider::handle:horizontal {
-                background: #4a9eff;
-                border: none;
-                width: 18px;
-                height: 18px;
-                margin: -5px 0;
-                border-radius: 9px;
-            }
-            QSlider::handle:horizontal:hover {
-                background: #5aaaff;
-            }
-        """)
-        layout.addWidget(self.interval_slider)
+        self.lbl_scan_status = QLabel("Ready to scan")
 
-        # Interval value label
-        self.interval_value_label = QLabel("2000 ms")
-        self.interval_value_label.setStyleSheet("color: #ffffff;")
-        self.interval_value_label.setFixedWidth(60)
-        interval_value_font = QFont()
-        interval_value_font.setPointSize(11)
-        interval_value_font.setBold(True)
-        self.interval_value_label.setFont(interval_value_font)
-        layout.addWidget(self.interval_value_label)
-        layout.addSpacing(30)
+        scan_layout.addWidget(self.btn_start_scan)
+        scan_layout.addWidget(self.btn_stop_scan)
+        scan_layout.addWidget(self.lbl_scan_status)
+        scan_layout.addStretch()
 
-        # Scanning status indicator
-        self.scanning_status_label = QLabel("Idle")
-        self.scanning_status_label.setStyleSheet("color: #aaaaaa;")
-        status_font = QFont()
-        status_font.setPointSize(11)
-        self.scanning_status_label.setFont(status_font)
-        self.scanning_status_label.setFixedWidth(60)
-        layout.addWidget(self.scanning_status_label)
+        scan_group.setLayout(scan_layout)
+        main_layout.addWidget(scan_group)
 
-        # Scanning activity indicator (simple text-based spinner)
-        self.activity_indicator = QLabel("●")
-        self.activity_indicator.setStyleSheet("color: #555555; font-size: 20px;")
-        self.activity_indicator.setFixedWidth(30)
-        layout.addWidget(self.activity_indicator)
+        # Channel indicators grid (4x4 for 16 channels)
+        channels_group = QGroupBox("Channel Measurements")
+        channels_layout = QGridLayout()
 
-        layout.addStretch()
+        self.channel_indicators = []
+        for i in range(16):
+            row = i // 4
+            col = i % 4
+            indicator = ChannelIndicator(channel_num=i + 1)
+            channels_layout.addWidget(indicator, row, col)
+            self.channel_indicators.append(indicator)
 
-        return panel
+        channels_group.setLayout(channels_layout)
+        main_layout.addWidget(channels_group)
 
-    def _initialize_device(self) -> None:
-        """Initialize device interface (real or simulator)."""
-        if self._use_simulator:
-            self._device = VisaSimulator()
-            logger.info("Initialized simulator mode")
-        else:
-            self._device = VisaInterface()
-            logger.info("Initialized real device mode")
+        # Status bar
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
 
-    def _toggle_connection(self) -> None:
-        """Toggle device connection."""
-        if self._device.is_connected():
-            self._disconnect()
-        else:
-            self._connect()
+    def _setup_connections(self) -> None:
+        """Setup signal connections."""
+        self.status_updated.connect(self.status_bar.showMessage)
+        self.connection_changed.connect(self._on_connection_changed)
+        self.scan_started.connect(self._on_scan_started)
+        self.scan_complete.connect(self._on_scan_complete)
 
-    def _connect(self) -> None:
-        """Connect to the device."""
-        if self._device.connect():
-            self.connect_button.setText("Disconnect")
-            self.connect_button.setStyleSheet("""
-                QPushButton {
-                    background-color: #ff6b6b;
-                    color: white;
-                    border: none;
-                    padding: 8px 16px;
-                    border-radius: 4px;
-                    font-size: 14px;
-                    font-weight: bold;
-                }
-                QPushButton:hover {
-                    background-color: #ff7b7b;
-                }
-                QPushButton:pressed {
-                    background-color: #ef5b5b;
-                }
-            """)
+    @Slot()
+    def _on_connect_clicked(self) -> None:
+        """Handle connect button click."""
+        self.status_updated.emit("Connecting to device...")
+        QApplication.processEvents()
+
+        # Try to connect
+        success = self.visa.connect()
+
+        if success:
             self.status_label.setText("Connected")
-            self.status_label.setStyleSheet("color: #51cf66;")
-            
-            # Enable START button
-            self.start_button.setEnabled(True)
-            
-            # Update device address
-            device_address = self._device.get_device_address()
-            self.device_address_label.setText(f"Device: {device_address}")
-            
-            # Reset all channel indicators
-            for indicator in self._channel_indicators.values():
-                indicator.reset_status()
-            
-            logger.info("Connected successfully")
+            self.status_label.setStyleSheet("color: #51cf66; font-weight: bold;")
+            self.btn_connect.setEnabled(False)
+            self.btn_disconnect.setEnabled(True)
+            self.btn_start_scan.setEnabled(True)
+            self.connection_changed.emit(True)
+            self.status_updated.emit("Connected to SDM4055A-SC")
+            logger.info("Successfully connected to device")
         else:
-            self.status_label.setText("Connection Failed")
-            self.status_label.setStyleSheet("color: #ff6b6b;")
+            self.status_label.setText("Error")
+            self.status_label.setStyleSheet("color: #ff6b6b; font-weight: bold;")
+            QMessageBox.critical(
+                self,
+                "Connection Error",
+                "Failed to connect to device. Please check:\n"
+                "1. Device is powered on\n"
+                "2. USB cable is connected\n"
+                "3. VISA drivers are installed",
+            )
+            self.status_updated.emit("Connection failed")
             logger.error("Failed to connect to device")
 
-    def _disconnect(self) -> None:
-        """Disconnect from the device."""
+    @Slot()
+    def _on_disconnect_clicked(self) -> None:
+        """Handle disconnect button click."""
         # Stop scanning if active
-        if self._scanning:
+        if self.scan_manager is not None and self.scan_manager.is_scanning():
             self._stop_scanning()
-        
-        self._device.disconnect()
 
-        self.connect_button.setText("Connect")
-        self.connect_button.setStyleSheet("""
-            QPushButton {
-                background-color: #4a9eff;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #5aaaff;
-            }
-            QPushButton:pressed {
-                background-color: #3a8eef;
-            }
-        """)
+        # Disconnect
+        self.visa.disconnect()
+
+        # Update UI
         self.status_label.setText("Disconnected")
-        self.status_label.setStyleSheet("color: #ff6b6b;")
-        
-        # Disable START button
-        self.start_button.setEnabled(False)
-        
-        # Update device address
-        self.device_address_label.setText("Device: Not connected")
-        
-        # Reset all channel indicators
-        for indicator in self._channel_indicators.values():
-            indicator.set_status("Disconnected", error=False)
-        
-        logger.info("Disconnected")
+        self.status_label.setStyleSheet("color: #ff6b6b; font-weight: bold;")
+        self.btn_connect.setEnabled(True)
+        self.btn_disconnect.setEnabled(False)
+        self.btn_start_scan.setEnabled(False)
+        self.connection_changed.emit(False)
+        self.status_updated.emit("Disconnected from device")
+        logger.info("Disconnected from device")
+
+    @Slot(bool)
+    def _on_connection_changed(self, connected: bool) -> None:
+        """Handle connection state change."""
+        if not connected:
+            # Reset all channel indicators
+            for indicator in self.channel_indicators:
+                indicator.reset()
 
     def _start_scanning(self) -> None:
-        """Start multi-channel scanning."""
-        if not self._device.is_connected():
-            logger.warning("Cannot start scanning: device not connected")
+        """Start continuous scanning."""
+        if not self.visa.is_connected():
+            QMessageBox.warning(self, "Not Connected", "Please connect to device first")
             return
-        
-        # Create async scan manager
-        self._scan_manager = AsyncScanManager(self._device)
-        
-        # Connect signals before starting
-        self._scan_manager.connect_signals(
-            on_scan_complete=self._on_scan_complete,
-            on_scan_error=self._on_scan_error,
-            on_channel_read=self._on_channel_read,
-            on_scan_started=self._on_scan_started,
-            on_scan_stopped=self._on_scan_stopped
-        )
-        
-        # Start scanning with current interval
-        interval = self.interval_slider.value()
-        if self._scan_manager.start(interval):
-            logger.info(f"Started async scanning with interval {interval}ms")
-        else:
-            logger.error("Failed to start async scanning")
-            self._scan_manager = None
+
+        # Stop any existing scan
+        if self.scan_manager is not None and self.scan_manager.is_scanning():
+            self.scan_manager.stop()
+
+        # Create new scan manager
+        self.scan_manager = AsyncScanManager(self.visa)
+
+        # Connect signals
+        self.scan_manager.scan_complete.connect(self.scan_complete.emit)
+        self.scan_manager.scan_started.connect(self.scan_started.emit)
+        self.scan_manager.channel_read.connect(self._on_channel_read)
+        self.scan_manager.scan_stopped.connect(self._on_scan_stopped)
+
+        # Start scanning
+        self.scan_manager.start()
+
+        logger.info("Started scanning")
 
     def _stop_scanning(self) -> None:
-        """Stop multi-channel scanning."""
-        if self._scan_manager:
-            self._scan_manager.stop()
-            logger.info("Stopped async scanning")
+        """Stop continuous scanning."""
+        if self.scan_manager is not None and self.scan_manager.is_scanning():
+            self.scan_manager.stop()
+            logger.info("Stopped scanning")
 
-    def _on_interval_changed(self, value: int) -> None:
-        """Handle scan interval slider change."""
-        self.interval_value_label.setText(f"{value} ms")
-        
-        # Update scan manager interval if scanning
-        if self._scan_manager and self._scan_manager.is_scanning():
-            self._scan_manager.set_interval(value)
-            logger.info(f"Updated scan interval to {value}ms")
-
-    def _on_measurement_type_changed(self, channel_num: int, measurement_type: str) -> None:
-        """Handle measurement type change for a channel."""
-        if self._device and self._device.is_connected():
-            # Convert string to MeasurementType enum
-            try:
-                mt = MeasurementType(measurement_type)
-                self._device.set_channel_measurement_type(channel_num, mt)
-                logger.info(f"Channel {channel_num} measurement type changed to {measurement_type}")
-            except ValueError:
-                logger.error(f"Invalid measurement type: {measurement_type}")
-
-    def _on_scan_complete(self, measurements: object) -> None:
-        """Handle scan complete signal from async worker."""
-        # Update channel indicators with all measurements
-        for channel_num, value in measurements.items():
-            indicator = self._channel_indicators.get(channel_num)
-            if indicator:
-                if value is not None:
-                    # Determine unit based on measurement type
-                    measurement_type_str = indicator.get_measurement_type()
-                    unit = self._get_unit_for_measurement_type(measurement_type_str)
-                    indicator.set_value(value, unit)
-                    indicator.reset_status()
-                else:
-                    indicator.set_status("Error", error=True)
-        
-        logger.debug(f"Scan complete: {len(measurements)} channels updated")
-
-    def _on_scan_error(self, error_msg: str) -> None:
-        """Handle scan error signal from async worker."""
-        logger.error(f"Scan error: {error_msg}")
-        self.status_label.setText(f"Error: {error_msg}")
-        self.status_label.setStyleSheet("color: #ff6b6b;")
-        
-        # Stop scanning on error - scan_stopped signal will handle cleanup
-        if self._scan_manager and self._scan_manager.is_scanning():
-            self._scan_manager.stop()
-
-    def _on_channel_read(self, channel_num: int, value: float) -> None:
-        """Handle individual channel read signal for progress feedback."""
-        # This can be used to highlight active channel reading
-        indicator = self._channel_indicators.get(channel_num)
-        if indicator:
-            # Briefly highlight the channel being read
-            indicator.set_status("Reading...", error=False)
-            # Reset status will be called when scan completes
-
+    @Slot()
     def _on_scan_started(self) -> None:
-        """Handle scan started signal from async worker."""
-        self._scanning = True
-        self.start_button.setEnabled(False)
-        self.stop_button.setEnabled(True)
-        
-        # Update progress indicators
-        self.scanning_status_label.setText("Scanning")
-        self.scanning_status_label.setStyleSheet("color: #51cf66;")
-        self.activity_indicator.setStyleSheet("color: #51cf66; font-size: 20px;")
-        self._activity_timer.start(200)  # Update every 200ms
-        
-        logger.info("Scanning started")
+        """Handle scan started signal."""
+        self.btn_start_scan.setEnabled(False)
+        self.btn_stop_scan.setEnabled(True)
+        self.lbl_scan_status.setText("Scanning...")
+        self.status_updated.emit("Scanning started")
 
-    def _on_scan_stopped(self) -> None:
-        """Handle scan stopped signal from async worker."""
-        # Update UI state
-        self._scanning = False
-        self.start_button.setEnabled(True)
-        self.stop_button.setEnabled(False)
-        
-        # Update progress indicators
-        self.scanning_status_label.setText("Idle")
-        self.scanning_status_label.setStyleSheet("color: #aaaaaa;")
-        self.activity_indicator.setStyleSheet("color: #555555; font-size: 20px;")
-        self.activity_indicator.setText("●")
-        self._activity_timer.stop()
-        
-        # Clean up scan manager
-        if self._scan_manager:
-            self._scan_manager.deleteLater()
-            self._scan_manager = None
-        
-        logger.info("Scanning stopped")
-    
-    def _update_activity_indicator(self) -> None:
-        """Update activity indicator animation."""
-        self._activity_index = (self._activity_index + 1) % len(self._activity_symbols)
-        self.activity_indicator.setText(self._activity_symbols[self._activity_index])
-
-    def _get_unit_for_measurement_type(self, measurement_type: str) -> str:
-        """
-        Get the unit string for a given measurement type.
+    @Slot(object)
+    def _on_scan_complete(self, measurements) -> None:
+        """Handle scan complete signal.
 
         Args:
-            measurement_type: Measurement type string (e.g., "VOLT:DC").
-
-        Returns:
-            Unit string (e.g., "V").
+            measurements: Dictionary mapping channel numbers to measured values
         """
-        unit_map = {
-            "VOLT:DC": "V",
-            "VOLT:AC": "V",
-            "CURR:DC": "A",
-            "CURR:AC": "A",
-            "RES": "Ω",
-            "FRES": "Ω",
-            "CAP": "F",
-            "FREQ": "Hz",
-            "DIOD": "V",
-            "CONT": "Ω",
-            "TEMP:RTD": "°C",
-            "TEMP:THER": "°C",
-        }
-        return unit_map.get(measurement_type, "")
+        logger.info(f"Scan complete. Measurements: {measurements}")
+
+        # Update all channel indicators with new measurements
+        for channel_num, value in measurements.items():
+            if 1 <= channel_num <= 16:
+                indicator = self.channel_indicators[channel_num - 1]
+                indicator.set_value(value)
+
+        # Update status
+        self.lbl_scan_status.setText(f"Scan complete - {len(measurements)} channels")
+        self.status_updated.emit(f"Scan complete - {len(measurements)} channels measured")
+
+    @Slot()
+    def _on_scan_stopped(self) -> None:
+        """Handle scan stopped signal."""
+        self.btn_start_scan.setEnabled(True)
+        self.btn_stop_scan.setEnabled(False)
+        self.lbl_scan_status.setText("Scan stopped")
+        self.status_updated.emit("Scanning stopped")
+        logger.info("Scan stopped, UI updated")
+
+    @Slot(int, float)
+    def _on_channel_read(self, channel_num: int, value: float) -> None:
+        """Handle individual channel read signal.
+
+        Args:
+            channel_num: Channel number (1-16)
+            value: Measured value
+        """
+        logger.debug(f"Channel {channel_num} read: {value}")
+
+        # Only update indicator if scan is still running
+        # Don't set status here - let _on_scan_complete handle final display
+        if 1 <= channel_num <= 16:
+            indicator = self.channel_indicators[channel_num - 1]
+            # Just update value, don't set status
+            indicator.set_value(value)
 
     def closeEvent(self, event) -> None:
         """Handle window close event."""
-        # Stop async scanning and disconnect
-        if self._scan_manager:
-            self._scan_manager.stop()
-        if self._device and self._device.is_connected():
-            self._device.disconnect()
+        # Stop scanning
+        if self.scan_manager is not None and self.scan_manager.is_scanning():
+            self.scan_manager.stop()
+
+        # Disconnect from device
+        if self.visa.is_connected():
+            self.visa.disconnect()
+
         event.accept()
+        logger.info("Application closed")
