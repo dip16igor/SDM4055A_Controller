@@ -217,6 +217,37 @@ class AsyncScanManager(QObject):
         """Check if scanning is active."""
         return self._scanning
     
+    def perform_single_scan(self) -> None:
+        """
+        Perform a single scan of all channels without starting continuous scanning.
+        
+        This method executes a one-time scan and emits the scan_complete signal
+        with the results. It runs synchronously in the calling thread.
+        """
+        if not self._device.is_connected():
+            logger.error("Cannot perform single scan: device not connected")
+            self.scan_error.emit("Device not connected")
+            return
+        
+        try:
+            # Read all channels
+            measurements = self._device.read_all_channels()
+            
+            # Emit results
+            self.scan_complete.emit(measurements)
+            
+            # Also emit individual channel reads for progress feedback
+            for channel_num, value in measurements.items():
+                if value is not None:
+                    self.channel_read.emit(channel_num, value)
+            
+            logger.info(f"Single scan completed: {len(measurements)} channels read")
+            
+        except Exception as e:
+            error_msg = f"Single scan error: {str(e)}"
+            logger.error(error_msg)
+            self.scan_error.emit(error_msg)
+    
     def set_interval(self, interval_ms: int) -> None:
         """
         Update scan interval while scanning.

@@ -106,6 +106,10 @@ class MainWindow(QMainWindow):
         scan_group = QGroupBox("Scan Control")
         scan_layout = QHBoxLayout()
 
+        self.btn_single_scan = QPushButton("Single Scan")
+        self.btn_single_scan.clicked.connect(self._single_scan)
+        self.btn_single_scan.setEnabled(False)
+
         self.btn_start_scan = QPushButton("Start Scan")
         self.btn_start_scan.clicked.connect(self._start_scanning)
         self.btn_start_scan.setEnabled(False)
@@ -116,6 +120,7 @@ class MainWindow(QMainWindow):
 
         self.lbl_scan_status = QLabel("Ready to scan")
 
+        scan_layout.addWidget(self.btn_single_scan)
         scan_layout.addWidget(self.btn_start_scan)
         scan_layout.addWidget(self.btn_stop_scan)
         scan_layout.addWidget(self.lbl_scan_status)
@@ -175,6 +180,7 @@ class MainWindow(QMainWindow):
             self.btn_connect.setEnabled(False)
             self.btn_disconnect.setEnabled(True)
             self.btn_start_scan.setEnabled(True)
+            self.btn_single_scan.setEnabled(True)
             self.connection_changed.emit(True)
             self.status_updated.emit("Connected to SDM4055A-SC")
             logger.info("Successfully connected to device")
@@ -208,6 +214,7 @@ class MainWindow(QMainWindow):
         self.btn_connect.setEnabled(True)
         self.btn_disconnect.setEnabled(False)
         self.btn_start_scan.setEnabled(False)
+        self.btn_single_scan.setEnabled(False)
         self.device_combo.setEnabled(True)
         self.device_info_label.setText("No device connected")
         self.connection_changed.emit(False)
@@ -252,11 +259,32 @@ class MainWindow(QMainWindow):
             self.scan_manager.stop()
             logger.info("Stopped scanning")
 
+    def _single_scan(self) -> None:
+        """Perform a single scan of all channels."""
+        if not self.visa.is_connected():
+            QMessageBox.warning(self, "Not Connected", "Please connect to device first")
+            return
+
+        self.status_updated.emit("Performing single scan...")
+        self.lbl_scan_status.setText("Scanning...")
+        QApplication.processEvents()
+
+        # Create temporary scan manager for single scan
+        temp_scan_manager = AsyncScanManager(self.visa)
+
+        # Connect signals
+        temp_scan_manager.scan_complete.connect(self._on_single_scan_complete)
+
+        # Perform single scan
+        temp_scan_manager.perform_single_scan()
+        logger.info("Single scan initiated")
+
     @Slot()
     def _on_scan_started(self) -> None:
         """Handle scan started signal."""
         self.btn_start_scan.setEnabled(False)
         self.btn_stop_scan.setEnabled(True)
+        self.btn_single_scan.setEnabled(True)
         self.lbl_scan_status.setText("Scanning...")
         self.status_updated.emit("Scanning started")
 
@@ -284,9 +312,29 @@ class MainWindow(QMainWindow):
         """Handle scan stopped signal."""
         self.btn_start_scan.setEnabled(True)
         self.btn_stop_scan.setEnabled(False)
+        self.btn_single_scan.setEnabled(True)
         self.lbl_scan_status.setText("Scan stopped")
         self.status_updated.emit("Scanning stopped")
         logger.info("Scan stopped, UI updated")
+
+    @Slot(object)
+    def _on_single_scan_complete(self, measurements) -> None:
+        """Handle single scan complete signal.
+
+        Args:
+            measurements: Dictionary mapping channel numbers to measured values
+        """
+        logger.info(f"Single scan complete. Measurements: {measurements}")
+
+        # Update all channel indicators with new measurements
+        for channel_num, value in measurements.items():
+            if 1 <= channel_num <= 16:
+                indicator = self.channel_indicators[channel_num - 1]
+                indicator.set_value(value)
+
+        # Update status
+        self.lbl_scan_status.setText(f"Scan complete - {len(measurements)} channels")
+        self.status_updated.emit(f"Single scan complete - {len(measurements)} channels measured")
 
     @Slot(int, float)
     def _on_channel_read(self, channel_num: int, value: float) -> None:
