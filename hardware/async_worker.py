@@ -6,6 +6,8 @@ from PySide6.QtCore import QThread, Signal, QObject, QMutex, QMutexLocker
 from typing import Dict, Optional
 import logging
 
+from .visa_interface import MeasurementType
+
 logger = logging.getLogger(__name__)
 
 
@@ -139,6 +141,7 @@ class AsyncScanManager(QObject):
         self._thread: Optional[QThread] = None
         self._worker: Optional[ScanWorker] = None
         self._scanning = False
+        self._channel_configs: Dict[int, str] = {}
         
     def start(self, interval_ms: int = 2000) -> bool:
         """
@@ -190,6 +193,47 @@ class AsyncScanManager(QObject):
             self._cleanup()
             return False
     
+    def configure_channels(self, channel_configs: Dict[int, str]) -> bool:
+        """
+        Configure device with measurement types for each channel.
+        
+        Args:
+            channel_configs: Dictionary mapping channel numbers to measurement type strings.
+            
+        Returns:
+            True if configuration successful, False otherwise.
+        """
+        if not self._device.is_connected():
+            logger.error("Cannot configure channels: device not connected")
+            return False
+        
+        try:
+            # Store channel configurations
+            self._channel_configs = channel_configs.copy()
+            
+            # Configure each channel with its measurement type
+            for channel_num, measurement_type_str in channel_configs.items():
+                # Convert string to MeasurementType enum
+                try:
+                    measurement_type = MeasurementType(measurement_type_str)
+                except ValueError:
+                    logger.error(f"Invalid measurement type for channel {channel_num}: {measurement_type_str}")
+                    return False
+                
+                # Set channel measurement type
+                if not self._device.set_channel_measurement_type(channel_num, measurement_type):
+                    logger.error(f"Failed to set measurement type for channel {channel_num}")
+                    return False
+                
+                logger.debug(f"Configured channel {channel_num} with {measurement_type.value}")
+            
+            logger.info(f"Successfully configured {len(channel_configs)} channels")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error configuring channels: {e}")
+            return False
+    
     def stop(self) -> None:
         """Stop async scanning."""
         if not self._scanning:
@@ -230,6 +274,13 @@ class AsyncScanManager(QObject):
             return
         
         try:
+            # Configure channels if configurations exist
+            if self._channel_configs:
+                if not self.configure_channels(self._channel_configs):
+                    logger.error("Failed to configure channels for single scan")
+                    self.scan_error.emit("Channel configuration failed")
+                    return
+            
             # Read all channels
             measurements = self._device.read_all_channels()
             

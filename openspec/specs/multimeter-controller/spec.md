@@ -87,3 +87,41 @@ The system SHALL be packaged as a standalone Windows executable using PyInstalle
 #### Scenario: Run executable
 - **WHEN** user runs the packaged executable
 - **THEN** application launches without requiring Python installation or additional dependencies
+
+### Requirement: Per-Channel Measurement Type Selection
+The system SHALL provide GUI controls to select measurement types for each individual channel before scanning.
+
+#### Scenario: User selects DC Voltage for channel 1
+- **WHEN** user selects "DC Voltage" from dropdown on channel 1 indicator
+- **THEN** channel 1 is configured to measure DC voltage and selection is displayed
+
+#### Scenario: User selects Resistance for channel 5
+- **WHEN** user selects "Resistance" from dropdown on channel 5 indicator
+- **THEN** channel 5 is configured to measure resistance and selection is displayed
+
+#### Scenario: User selects different types for multiple channels
+- **WHEN** user selects "DC Voltage" for channel 1, "AC Voltage" for channel 2, and "Resistance" for channel 3
+- **THEN** all three channels are configured with their respective measurement types
+
+#### Scenario: Measurement type selection persists
+- **WHEN** user selects measurement type for a channel and performs multiple scans
+- **THEN** selected measurement type is used for all subsequent scans until changed
+
+#### Scenario: Invalid measurement type for channel
+- **WHEN** user attempts to select current measurement on voltage-only channel (1-12)
+- **THEN** selection is rejected and error message is displayed
+
+### Requirement: Channel Configuration Before Scan
+The system SHALL configure each channel with its selected measurement type before starting any scan operation.
+
+#### Scenario: Configure channels before single scan
+- **WHEN** user clicks "Single Scan" with different measurement types selected for channels
+- **THEN** device is configured with all channel measurement types before scan executes
+
+#### Scenario: Configure channels before continuous scan
+- **WHEN** user clicks "Start Scan" with different measurement types selected for channels
+- **THEN** device is configured with all channel measurement types before continuous scanning begins
+
+#### Scenario: Channel configuration order
+- **WHEN** device is being configured for scanning
+- **THEN** channels are configured in sequential order (1-16) with their respective measurement types

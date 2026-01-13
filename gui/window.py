@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
 )
 
-from hardware.visa_interface import VisaInterface
+from hardware.visa_interface import VisaInterface, MeasurementType
 from hardware.async_worker import AsyncScanManager
 from gui.widgets import ChannelIndicator
 
@@ -53,9 +53,15 @@ class MainWindow(QMainWindow):
         # Channel indicators (1-16)
         self.channel_indicators: List[ChannelIndicator] = []
 
+        # Channel measurement type configurations (1-16)
+        self._channel_measurement_types: Dict[int, str] = {}
+
         # Setup UI
         self._setup_ui()
         self._setup_connections()
+
+        # Initialize default channel measurement types
+        self._initialize_channel_measurement_types()
 
         # Initial status
         self.status_updated.emit("Ready")
@@ -155,6 +161,10 @@ class MainWindow(QMainWindow):
         self.scan_started.connect(self._on_scan_started)
         self.scan_complete.connect(self._on_scan_complete)
 
+        # Connect channel measurement type change signals
+        for indicator in self.channel_indicators:
+            indicator.measurement_type_changed.connect(self._on_channel_measurement_type_changed)
+
     @Slot()
     def _on_connect_clicked(self) -> None:
         """Handle connect button click."""
@@ -221,6 +231,36 @@ class MainWindow(QMainWindow):
         self.status_updated.emit("Disconnected from device")
         logger.info("Disconnected from device")
 
+    def _initialize_channel_measurement_types(self) -> None:
+        """Initialize default measurement types for all channels."""
+        for i in range(1, 17):
+            if i <= 12:
+                # Channels 1-12: default to DC voltage
+                self._channel_measurement_types[i] = MeasurementType.VOLTAGE_DC.value
+            else:
+                # Channels 13-16: default to DC current
+                self._channel_measurement_types[i] = MeasurementType.CURRENT_DC.value
+
+    @Slot(int, str)
+    def _on_channel_measurement_type_changed(self, channel_num: int, measurement_type: str) -> None:
+        """Handle channel measurement type change.
+
+        Args:
+            channel_num: Channel number (1-16).
+            measurement_type: New measurement type string.
+        """
+        logger.info(f"Channel {channel_num} measurement type changed to {measurement_type}")
+        self._channel_measurement_types[channel_num] = measurement_type
+
+    def get_all_channel_measurement_types(self) -> Dict[int, str]:
+        """
+        Get measurement types for all channels.
+
+        Returns:
+            Dictionary mapping channel numbers to measurement type strings.
+        """
+        return self._channel_measurement_types.copy()
+
     @Slot(bool)
     def _on_connection_changed(self, connected: bool) -> None:
         """Handle connection state change."""
@@ -241,6 +281,12 @@ class MainWindow(QMainWindow):
 
         # Create new scan manager
         self.scan_manager = AsyncScanManager(self.visa)
+
+        # Configure device with channel measurement types
+        channel_configs = self.get_all_channel_measurement_types()
+        if not self.scan_manager.configure_channels(channel_configs):
+            QMessageBox.warning(self, "Configuration Error", "Failed to configure channels with measurement types")
+            return
 
         # Connect signals
         self.scan_manager.scan_complete.connect(self.scan_complete.emit)
@@ -271,6 +317,12 @@ class MainWindow(QMainWindow):
 
         # Create temporary scan manager for single scan
         temp_scan_manager = AsyncScanManager(self.visa)
+
+        # Configure device with channel measurement types
+        channel_configs = self.get_all_channel_measurement_types()
+        if not temp_scan_manager.configure_channels(channel_configs):
+            QMessageBox.warning(self, "Configuration Error", "Failed to configure channels with measurement types")
+            return
 
         # Connect signals
         temp_scan_manager.scan_complete.connect(self._on_single_scan_complete)

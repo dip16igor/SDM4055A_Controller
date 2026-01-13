@@ -6,41 +6,11 @@ import random
 import time
 from typing import Optional, Dict
 import logging
-from enum import Enum
 from PySide6.QtCore import QMutex, QMutexLocker
 
+from .visa_interface import MeasurementType, ChannelConfig
+
 logger = logging.getLogger(__name__)
-
-
-class MeasurementType(Enum):
-    """Enumeration of supported measurement types."""
-    VOLTAGE_DC = "VOLT:DC"
-    VOLTAGE_AC = "VOLT:AC"
-    CURRENT_DC = "CURR:DC"
-    CURRENT_AC = "CURR:AC"
-    RESISTANCE_2WIRE = "RES"
-    RESISTANCE_4WIRE = "FRES"
-    CAPACITANCE = "CAP"
-    FREQUENCY = "FREQ"
-    DIODE = "DIOD"
-    CONTINUITY = "CONT"
-    TEMP_RTD = "TEMP:RTD"
-    TEMP_THERMOCOUPLE = "TEMP:THER"
-
-
-class ChannelConfig:
-    """Configuration for a single channel."""
-    
-    def __init__(self, channel_num: int, measurement_type: MeasurementType = MeasurementType.VOLTAGE_DC):
-        """
-        Initialize channel configuration.
-        
-        Args:
-            channel_num: Channel number (1-16).
-            measurement_type: Measurement type for this channel.
-        """
-        self.channel_num = channel_num
-        self.measurement_type = measurement_type
 
 
 class VisaSimulator:

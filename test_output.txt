@@ -1,0 +1,527 @@
+2026-01-13 18:47:29,227 - __main__ - INFO - Starting Per-Channel Measurement Type Selection Tests
+
+2026-01-13 18:47:29,227 - __main__ - INFO - ============================================================
+2026-01-13 18:47:29,227 - __main__ - INFO - TEST 1: Measurement Type Configuration
+2026-01-13 18:47:29,227 - __main__ - INFO - ============================================================
+2026-01-13 18:47:29,227 - hardware.simulator - INFO - Simulator: Connected (mock device)
+2026-01-13 18:47:29,227 - hardware.simulator - INFO - Simulator: Set channel 1 to VOLT:DC
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 184, in main
+    test_measurement_type_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 46, in test_measurement_type_configuration
+    logger.info(f"{status} Set channel {channel_num:2d} to {measurement_type.value:15s} - {result}")
+Message: '\u2713 Set channel  1 to VOLT:DC         - True'
+Arguments: ()
+2026-01-13 18:47:29,230 - hardware.simulator - INFO - Simulator: Set channel 2 to VOLT:AC
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 184, in main
+    test_measurement_type_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 46, in test_measurement_type_configuration
+    logger.info(f"{status} Set channel {channel_num:2d} to {measurement_type.value:15s} - {result}")
+Message: '\u2713 Set channel  2 to VOLT:AC         - True'
+Arguments: ()
+2026-01-13 18:47:29,230 - hardware.simulator - INFO - Simulator: Set channel 3 to RES
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 184, in main
+    test_measurement_type_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 46, in test_measurement_type_configuration
+    logger.info(f"{status} Set channel {channel_num:2d} to {measurement_type.value:15s} - {result}")
+Message: '\u2713 Set channel  3 to RES             - True'
+Arguments: ()
+2026-01-13 18:47:29,231 - hardware.simulator - INFO - Simulator: Set channel 4 to CAP
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 184, in main
+    test_measurement_type_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 46, in test_measurement_type_configuration
+    logger.info(f"{status} Set channel {channel_num:2d} to {measurement_type.value:15s} - {result}")
+Message: '\u2713 Set channel  4 to CAP             - True'
+Arguments: ()
+2026-01-13 18:47:29,231 - hardware.simulator - INFO - Simulator: Set channel 5 to FREQ
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 184, in main
+    test_measurement_type_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 46, in test_measurement_type_configuration
+    logger.info(f"{status} Set channel {channel_num:2d} to {measurement_type.value:15s} - {result}")
+Message: '\u2713 Set channel  5 to FREQ            - True'
+Arguments: ()
+2026-01-13 18:47:29,232 - hardware.simulator - INFO - Simulator: Set channel 13 to CURR:DC
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 184, in main
+    test_measurement_type_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 46, in test_measurement_type_configuration
+    logger.info(f"{status} Set channel {channel_num:2d} to {measurement_type.value:15s} - {result}")
+Message: '\u2713 Set channel 13 to CURR:DC         - True'
+Arguments: ()
+2026-01-13 18:47:29,232 - hardware.simulator - INFO - Simulator: Set channel 14 to CURR:AC
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 184, in main
+    test_measurement_type_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 46, in test_measurement_type_configuration
+    logger.info(f"{status} Set channel {channel_num:2d} to {measurement_type.value:15s} - {result}")
+Message: '\u2713 Set channel 14 to CURR:AC         - True'
+Arguments: ()
+2026-01-13 18:47:29,233 - __main__ - INFO - 
+Verifying configurations:
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 184, in main
+    test_measurement_type_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 55, in test_measurement_type_configuration
+    logger.info(f"{status} Channel {channel_num:2d}: expected={expected_type.value:15s}, actual={actual_type.value if actual_type else 'None':15s}")
+Message: '\u2713 Channel  1: expected=VOLT:DC        , actual=VOLT:DC        '
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 184, in main
+    test_measurement_type_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 55, in test_measurement_type_configuration
+    logger.info(f"{status} Channel {channel_num:2d}: expected={expected_type.value:15s}, actual={actual_type.value if actual_type else 'None':15s}")
+Message: '\u2713 Channel  2: expected=VOLT:AC        , actual=VOLT:AC        '
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 184, in main
+    test_measurement_type_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 55, in test_measurement_type_configuration
+    logger.info(f"{status} Channel {channel_num:2d}: expected={expected_type.value:15s}, actual={actual_type.value if actual_type else 'None':15s}")
+Message: '\u2713 Channel  3: expected=RES            , actual=RES            '
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 184, in main
+    test_measurement_type_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 55, in test_measurement_type_configuration
+    logger.info(f"{status} Channel {channel_num:2d}: expected={expected_type.value:15s}, actual={actual_type.value if actual_type else 'None':15s}")
+Message: '\u2713 Channel  4: expected=CAP            , actual=CAP            '
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 184, in main
+    test_measurement_type_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 55, in test_measurement_type_configuration
+    logger.info(f"{status} Channel {channel_num:2d}: expected={expected_type.value:15s}, actual={actual_type.value if actual_type else 'None':15s}")
+Message: '\u2713 Channel  5: expected=FREQ           , actual=FREQ           '
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 184, in main
+    test_measurement_type_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 55, in test_measurement_type_configuration
+    logger.info(f"{status} Channel {channel_num:2d}: expected={expected_type.value:15s}, actual={actual_type.value if actual_type else 'None':15s}")
+Message: '\u2713 Channel 13: expected=CURR:DC        , actual=CURR:DC        '
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 184, in main
+    test_measurement_type_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 55, in test_measurement_type_configuration
+    logger.info(f"{status} Channel {channel_num:2d}: expected={expected_type.value:15s}, actual={actual_type.value if actual_type else 'None':15s}")
+Message: '\u2713 Channel 14: expected=CURR:AC        , actual=CURR:AC        '
+Arguments: ()
+2026-01-13 18:47:29,237 - hardware.simulator - INFO - Simulator: Disconnected
+2026-01-13 18:47:29,237 - __main__ - INFO - 
+============================================================
+
+2026-01-13 18:47:29,237 - __main__ - INFO - ============================================================
+2026-01-13 18:47:29,237 - __main__ - INFO - TEST 2: Scan Manager Channel Configuration
+2026-01-13 18:47:29,237 - __main__ - INFO - ============================================================
+2026-01-13 18:47:29,237 - hardware.simulator - INFO - Simulator: Connected (mock device)
+2026-01-13 18:47:29,237 - __main__ - INFO - Configuring channels through scan manager:
+2026-01-13 18:47:29,237 - hardware.simulator - INFO - Simulator: Set channel 1 to VOLT:DC
+2026-01-13 18:47:29,237 - hardware.simulator - INFO - Simulator: Set channel 2 to VOLT:AC
+2026-01-13 18:47:29,237 - hardware.simulator - INFO - Simulator: Set channel 3 to RES
+2026-01-13 18:47:29,237 - hardware.simulator - INFO - Simulator: Set channel 4 to CAP
+2026-01-13 18:47:29,237 - hardware.simulator - INFO - Simulator: Set channel 5 to FREQ
+2026-01-13 18:47:29,237 - hardware.simulator - INFO - Simulator: Set channel 13 to CURR:DC
+2026-01-13 18:47:29,237 - hardware.simulator - INFO - Simulator: Set channel 14 to CURR:AC
+2026-01-13 18:47:29,237 - hardware.async_worker - INFO - Successfully configured 7 channels
+2026-01-13 18:47:29,237 - __main__ - INFO - Configuration result: True
+2026-01-13 18:47:29,237 - __main__ - INFO - 
+Verifying configurations:
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 185, in main
+    test_scan_manager_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 98, in test_scan_manager_configuration
+    logger.info(f"{status} Channel {channel_num:2d}: expected={expected_type.value:15s}, actual={actual_type.value if actual_type else 'None':15s}")
+Message: '\u2713 Channel  1: expected=VOLT:DC        , actual=VOLT:DC        '
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 185, in main
+    test_scan_manager_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 98, in test_scan_manager_configuration
+    logger.info(f"{status} Channel {channel_num:2d}: expected={expected_type.value:15s}, actual={actual_type.value if actual_type else 'None':15s}")
+Message: '\u2713 Channel  2: expected=VOLT:AC        , actual=VOLT:AC        '
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 185, in main
+    test_scan_manager_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 98, in test_scan_manager_configuration
+    logger.info(f"{status} Channel {channel_num:2d}: expected={expected_type.value:15s}, actual={actual_type.value if actual_type else 'None':15s}")
+Message: '\u2713 Channel  3: expected=RES            , actual=RES            '
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 185, in main
+    test_scan_manager_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 98, in test_scan_manager_configuration
+    logger.info(f"{status} Channel {channel_num:2d}: expected={expected_type.value:15s}, actual={actual_type.value if actual_type else 'None':15s}")
+Message: '\u2713 Channel  4: expected=CAP            , actual=CAP            '
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 185, in main
+    test_scan_manager_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 98, in test_scan_manager_configuration
+    logger.info(f"{status} Channel {channel_num:2d}: expected={expected_type.value:15s}, actual={actual_type.value if actual_type else 'None':15s}")
+Message: '\u2713 Channel  5: expected=FREQ           , actual=FREQ           '
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 185, in main
+    test_scan_manager_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 98, in test_scan_manager_configuration
+    logger.info(f"{status} Channel {channel_num:2d}: expected={expected_type.value:15s}, actual={actual_type.value if actual_type else 'None':15s}")
+Message: '\u2713 Channel 13: expected=CURR:DC        , actual=CURR:DC        '
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 185, in main
+    test_scan_manager_configuration()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 98, in test_scan_manager_configuration
+    logger.info(f"{status} Channel {channel_num:2d}: expected={expected_type.value:15s}, actual={actual_type.value if actual_type else 'None':15s}")
+Message: '\u2713 Channel 14: expected=CURR:AC        , actual=CURR:AC        '
+Arguments: ()
+2026-01-13 18:47:29,241 - hardware.simulator - INFO - Simulator: Disconnected
+2026-01-13 18:47:29,241 - __main__ - INFO - 
+============================================================
+
+2026-01-13 18:47:29,241 - hardware.async_worker - WARNING - Scanning not active
+2026-01-13 18:47:29,241 - __main__ - INFO - ============================================================
+2026-01-13 18:47:29,241 - __main__ - INFO - TEST 3: Invalid Configurations
+2026-01-13 18:47:29,241 - __main__ - INFO - ============================================================
+2026-01-13 18:47:29,241 - hardware.simulator - INFO - Simulator: Connected (mock device)
+2026-01-13 18:47:29,241 - hardware.simulator - ERROR - Simulator: Invalid channel number: 17
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2717' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 186, in main
+    test_invalid_configurations()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 116, in test_invalid_configurations
+    logger.info(f"\u2717 Set channel 17 (invalid): {result} (expected: False)")
+Message: '\u2717 Set channel 17 (invalid): False (expected: False)'
+Arguments: ()
+2026-01-13 18:47:29,242 - hardware.simulator - ERROR - Simulator: Current measurement not supported on channel 1
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2717' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 186, in main
+    test_invalid_configurations()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 120, in test_invalid_configurations
+    logger.info(f"\u2717 Set channel 1 to CURRENT_DC (invalid): {result} (expected: False)")
+Message: '\u2717 Set channel 1 to CURRENT_DC (invalid): False (expected: False)'
+Arguments: ()
+2026-01-13 18:47:29,243 - hardware.simulator - ERROR - Simulator: Only current measurement supported on channel 13
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2717' in position 44: character maps to <undefined>
+Call stack:
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 193, in <module>
+    main()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 186, in main
+    test_invalid_configurations()
+  File "c:\NextCloud\pythonProject\SDM4055A_Controller\test_per_channel_measurement.py", line 124, in test_invalid_configurations
+    logger.info(f"\u2717 Set channel 13 to VOLTAGE_DC (invalid): {result} (expected: False)")
+Message: '\u2717 Set channel 13 to VOLTAGE_DC (invalid): False (expected: False)'
+Arguments: ()
+2026-01-13 18:47:29,243 - hardware.simulator - INFO - Simulator: Disconnected
+2026-01-13 18:47:29,243 - __main__ - INFO - 
+============================================================
+
+2026-01-13 18:47:29,243 - __main__ - INFO - ============================================================
+2026-01-13 18:47:29,243 - __main__ - INFO - TEST 4: Single Scan with Configurations
+2026-01-13 18:47:29,243 - __main__ - INFO - ============================================================
+2026-01-13 18:47:29,243 - hardware.simulator - INFO - Simulator: Connected (mock device)
+2026-01-13 18:47:29,243 - __main__ - INFO - Configuring channels:
+2026-01-13 18:47:29,243 - hardware.simulator - INFO - Simulator: Set channel 1 to VOLT:DC
+2026-01-13 18:47:29,243 - hardware.simulator - INFO - Simulator: Set channel 2 to VOLT:AC
+2026-01-13 18:47:29,243 - hardware.simulator - INFO - Simulator: Set channel 3 to RES
+2026-01-13 18:47:29,244 - hardware.simulator - INFO - Simulator: Set channel 13 to CURR:DC
+2026-01-13 18:47:29,244 - hardware.async_worker - INFO - Successfully configured 4 channels
+2026-01-13 18:47:29,244 - __main__ - INFO - Configuration result: True
+2026-01-13 18:47:29,244 - __main__ - INFO - 
+Performing single scan...
+2026-01-13 18:47:29,244 - hardware.simulator - INFO - Simulator: Set channel 1 to VOLT:DC
+2026-01-13 18:47:29,244 - hardware.simulator - INFO - Simulator: Set channel 2 to VOLT:AC
+2026-01-13 18:47:29,244 - hardware.simulator - INFO - Simulator: Set channel 3 to RES
+2026-01-13 18:47:29,244 - hardware.simulator - INFO - Simulator: Set channel 13 to CURR:DC
+2026-01-13 18:47:29,244 - hardware.async_worker - INFO - Successfully configured 4 channels
+2026-01-13 18:47:29,246 - __main__ - INFO - Scan complete! Received 16 measurements
+2026-01-13 18:47:29,246 - hardware.async_worker - INFO - Single scan completed: 16 channels read
+2026-01-13 18:47:29,246 - __main__ - INFO - 
+Measurement results:
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel  1:   5.099984 (VOLT:DC)
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel  2:   3.409391 (VOLT:AC)
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel  3: 100.063920 (RES)
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel  4:   5.028792 (VOLT:DC)
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel  5:   5.057535 (VOLT:DC)
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel  6:   4.916922 (VOLT:DC)
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel  7:   5.022971 (VOLT:DC)
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel  8:   5.044352 (VOLT:DC)
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel  9:   5.026812 (VOLT:DC)
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel 10:   4.924588 (VOLT:DC)
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel 11:   5.072678 (VOLT:DC)
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel 12:   5.045704 (VOLT:DC)
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel 13:   0.524968 (CURR:DC)
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel 14:   0.563089 (CURR:DC)
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel 15:   0.464324 (CURR:DC)
+2026-01-13 18:47:29,246 - __main__ - INFO -   Channel 16:   0.422278 (CURR:DC)
+2026-01-13 18:47:29,247 - hardware.simulator - INFO - Simulator: Disconnected
+2026-01-13 18:47:29,247 - __main__ - INFO - 
+============================================================
+
+2026-01-13 18:47:29,247 - hardware.async_worker - WARNING - Scanning not active
+2026-01-13 18:47:29,247 - __main__ - INFO - All tests completed!
