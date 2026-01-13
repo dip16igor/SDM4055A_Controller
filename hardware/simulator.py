@@ -25,14 +25,17 @@ class VisaSimulator:
         """
         self.resource_string = resource_string
         self._connected = False
-        
+
         # Mutex for thread-safe access
         self._mutex = QMutex()
-        
+
+        # Current measurement function
+        self._current_function = "VOLT:DC"
+
         # Channel configurations (1-16)
         self._channel_configs: Dict[int, ChannelConfig] = {}
         self._initialize_channels()
-        
+
         # Base values for different measurement types
         self._base_values = {
             MeasurementType.VOLTAGE_DC: 5.0,
@@ -86,8 +89,10 @@ class VisaSimulator:
 
         try:
             # Generate simulated reading with small random fluctuations
+            # Use DC voltage as default measurement type
+            base_value = self._base_values.get(MeasurementType.VOLTAGE_DC, 5.0)
             noise = random.uniform(-self._noise_level, self._noise_level)
-            value = self._base_value + noise
+            value = base_value + noise
             logger.debug(f"Simulator: Read value {value:.6f} V")
             return value
         except Exception as e:
@@ -104,6 +109,7 @@ class VisaSimulator:
         Returns:
             True (always successful in simulator mode).
         """
+        self._current_function = function
         logger.info(f"Simulator: Set function to {function}")
         return True
 
@@ -149,16 +155,19 @@ class VisaSimulator:
         if channel_num <= 12:
             # Channels 1-12 support all types except current
             if measurement_type in [MeasurementType.CURRENT_DC, MeasurementType.CURRENT_AC]:
-                logger.error(f"Simulator: Current measurement not supported on channel {channel_num}")
+                logger.error(
+                    f"Simulator: Current measurement not supported on channel {channel_num}")
                 return False
         else:
             # Channels 13-16 only support current
             if measurement_type not in [MeasurementType.CURRENT_DC, MeasurementType.CURRENT_AC]:
-                logger.error(f"Simulator: Only current measurement supported on channel {channel_num}")
+                logger.error(
+                    f"Simulator: Only current measurement supported on channel {channel_num}")
                 return False
 
         self._channel_configs[channel_num].measurement_type = measurement_type
-        logger.info(f"Simulator: Set channel {channel_num} to {measurement_type.value}")
+        logger.info(
+            f"Simulator: Set channel {channel_num} to {measurement_type.value}")
         return True
 
     def switch_channel(self, channel_num: int) -> bool:
@@ -198,7 +207,8 @@ class VisaSimulator:
 
         config = self._channel_configs.get(channel_num)
         if not config:
-            logger.error(f"Simulator: No configuration for channel {channel_num}")
+            logger.error(
+                f"Simulator: No configuration for channel {channel_num}")
             return None
 
         try:
@@ -206,10 +216,12 @@ class VisaSimulator:
             base_value = self._base_values.get(config.measurement_type, 0.0)
             noise = random.uniform(-self._noise_level, self._noise_level)
             value = base_value + noise
-            logger.debug(f"Simulator: Read value {value:.6f} from channel {channel_num}")
+            logger.debug(
+                f"Simulator: Read value {value:.6f} from channel {channel_num}")
             return value
         except Exception as e:
-            logger.error(f"Simulator: Unexpected error during read on channel {channel_num}: {e}")
+            logger.error(
+                f"Simulator: Unexpected error during read on channel {channel_num}: {e}")
             return None
 
     def read_all_channels(self) -> Dict[int, Optional[float]]:
@@ -222,7 +234,8 @@ class VisaSimulator:
         with QMutexLocker(self._mutex):
             results = {}
             for channel_num in range(1, 17):
-                results[channel_num] = self.read_channel_measurement(channel_num)
+                results[channel_num] = self.read_channel_measurement(
+                    channel_num)
             return results
 
     def get_device_address(self) -> str:
@@ -235,3 +248,44 @@ class VisaSimulator:
         if not self._connected:
             return "Not connected"
         return "USB0::0x1AB1::0x04CE::SIMULATOR::INSTR"
+
+    def get_device_info(self) -> Dict[str, str]:
+        """
+        Get simulated device information.
+
+        Returns:
+            Dictionary with simulated device information.
+        """
+        if not self._connected:
+            return {}
+
+        return {
+            'manufacturer': 'SIGLENT',
+            'model': 'SDM4055A-SC',
+            'serial_number': 'SIMULATOR',
+            'version': '1.00',
+            'address': self.resource_string,
+            'idn': 'SIGLENT,SDM4055A-SC,SIMULATOR,1.00'
+        }
+
+    def list_available_resources(self) -> List[str]:
+        """
+        List simulated available VISA resources.
+
+        Returns:
+            List of simulated VISA resource strings.
+        """
+        with QMutexLocker(self._mutex):
+            # Return a mock list of resources
+            return [
+                "USB0::0x1AB1::0x04CE::SIMULATOR::INSTR"
+            ]
+
+    def get_measurement_function(self) -> str:
+        """
+        Get current measurement function.
+
+        Returns:
+            Current measurement function string.
+        """
+        return self._current_function

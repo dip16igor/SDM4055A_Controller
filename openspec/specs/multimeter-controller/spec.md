@@ -88,6 +88,8 @@ The system SHALL be packaged as a standalone Windows executable using PyInstalle
 - **WHEN** user runs the packaged executable
 - **THEN** application launches without requiring Python installation or additional dependencies
 
+## ADDED Requirements
+
 ### Requirement: Per-Channel Measurement Type Selection
 The system SHALL provide GUI controls to select measurement types for each individual channel before scanning.
 
@@ -125,3 +127,28 @@ The system SHALL configure each channel with its selected measurement type befor
 #### Scenario: Channel configuration order
 - **WHEN** device is being configured for scanning
 - **THEN** channels are configured in sequential order (1-16) with their respective measurement types
+
+## MODIFIED Requirements
+
+### Requirement: Multi-Channel Measurement Reading
+The system SHALL read measurement data from multiple channels of the SDM4055A-SC multimeter with CS1016 scanning card at configurable intervals, using the measurement type configured for each channel.
+
+#### Scenario: Read DC voltage measurement on channel configured for DC voltage
+- **WHEN** device is connected and channel 1 is configured for DC voltage measurement
+- **THEN** system reads DC voltage value from device and returns it as float
+
+#### Scenario: Read AC voltage measurement on channel configured for AC voltage
+- **WHEN** device is connected and channel 2 is configured for AC voltage measurement
+- **THEN** system reads AC voltage value from device and returns it as float
+
+#### Scenario: Read resistance measurement on channel configured for resistance
+- **WHEN** device is connected and channel 3 is configured for resistance measurement
+- **THEN** system reads resistance value from device and returns it as float
+
+#### Scenario: Periodic polling with mixed measurement types
+- **WHEN** device is connected and channels are configured with different measurement types
+- **THEN** system reads each channel using its configured measurement type every 500ms and updates display
+
+#### Scenario: Read during disconnection
+- **WHEN** device is disconnected and polling timer attempts to read
+- **THEN** system handles error gracefully and displays connection status
