@@ -80,11 +80,22 @@ class MainWindow(QMainWindow):
         self.btn_disconnect.clicked.connect(self._on_disconnect_clicked)
         self.btn_disconnect.setEnabled(False)
 
+        self.btn_refresh_devices = QPushButton("Refresh")
+        self.btn_refresh_devices.clicked.connect(self._on_refresh_devices)
+
+        self.device_combo = QComboBox()
+        self.device_combo.currentIndexChanged.connect(self._on_device_selected)
+
+        self.device_info_label = QLabel("No device connected")
+
         self.status_label = QLabel("Disconnected")
         self.status_label.setStyleSheet("color: #ff6b6b; font-weight: bold;")
 
         conn_layout.addWidget(self.btn_connect)
         conn_layout.addWidget(self.btn_disconnect)
+        conn_layout.addWidget(self.btn_refresh_devices)
+        conn_layout.addWidget(self.device_combo)
+        conn_layout.addWidget(self.device_info_label)
         conn_layout.addWidget(self.status_label)
         conn_layout.addStretch()
 
@@ -145,10 +156,20 @@ class MainWindow(QMainWindow):
         self.status_updated.emit("Connecting to device...")
         QApplication.processEvents()
 
+        # Get selected device from combo box
+        selected_device = self.device_combo.currentData()
+        if selected_device:
+            self.visa.resource_string = selected_device
+            logger.info(f"Using selected device: {selected_device}")
+
         # Try to connect
         success = self.visa.connect()
 
         if success:
+            # Update device info display
+            device_info = self.visa.get_device_info()
+            self._update_device_info_display(device_info)
+
             self.status_label.setText("Connected")
             self.status_label.setStyleSheet("color: #51cf66; font-weight: bold;")
             self.btn_connect.setEnabled(False)
@@ -187,6 +208,8 @@ class MainWindow(QMainWindow):
         self.btn_connect.setEnabled(True)
         self.btn_disconnect.setEnabled(False)
         self.btn_start_scan.setEnabled(False)
+        self.device_combo.setEnabled(True)
+        self.device_info_label.setText("No device connected")
         self.connection_changed.emit(False)
         self.status_updated.emit("Disconnected from device")
         logger.info("Disconnected from device")
@@ -294,3 +317,53 @@ class MainWindow(QMainWindow):
 
         event.accept()
         logger.info("Application closed")
+
+    def _on_refresh_devices(self) -> None:
+        """Handle refresh devices button click."""
+        self.status_updated.emit("Scanning for devices...")
+        QApplication.processEvents()
+
+        # Get available devices
+        resources = self.visa.list_available_resources()
+
+        # Update device combo box
+        self.device_combo.clear()
+        if resources:
+            for resource in resources:
+                self.device_combo.addItem(resource, resource)
+                logger.debug(f"Added device to list: {resource}")
+            self.device_combo.setEnabled(True)
+
+            # Select first device by default
+            if resources:
+                self.device_combo.setCurrentIndex(0)
+                logger.info(f"Auto-selected device: {resources[0]}")
+
+            self.status_updated.emit(f"Found {len(resources)} device(s)")
+        else:
+            self.device_combo.setEnabled(False)
+            self.status_updated.emit("No VISA devices found")
+            logger.warning("No VISA resources found")
+
+    def _on_device_selected(self, index: int) -> None:
+        """Handle device selection from combo box."""
+        if index >= 0:
+            selected_device = self.device_combo.currentData()
+            logger.info(f"Device selected: {selected_device}")
+            self.status_updated.emit(f"Selected: {selected_device}")
+
+    def _update_device_info_display(self, device_info: Dict[str, str]) -> None:
+        """Update device information display."""
+        if device_info:
+            manufacturer = device_info.get('manufacturer', 'Unknown')
+            model = device_info.get('model', 'Unknown')
+            serial = device_info.get('serial_number', 'Unknown')
+            address = device_info.get('address', 'Unknown')
+
+            info_text = f"{manufacturer} | {model} | SN: {serial}"
+            self.device_info_label.setText(info_text)
+            self.device_info_label.setToolTip(f"Address: {address}")
+            logger.info(f"Device info: {device_info}")
+        else:
+            self.device_info_label.setText("No device connected")
+            self.device_info_label.setToolTip("")

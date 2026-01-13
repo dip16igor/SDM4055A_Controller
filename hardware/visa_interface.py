@@ -588,3 +588,86 @@ class VisaInterface:
         if not self._connected or not self.resource_string:
             return "Not connected"
         return self.resource_string
+
+    def list_available_resources(self) -> List[str]:
+        """
+        List all available VISA resources.
+
+        Returns:
+            List of VISA resource strings, or empty list if no resources found.
+        """
+        with QMutexLocker(self._mutex):
+            # Create temporary resource manager if not initialized
+            temp_rm = None
+            try:
+                if not self.rm:
+                    logger.info("Creating temporary resource manager for listing resources")
+                    temp_rm = pyvisa.ResourceManager()
+                    rm_to_use = temp_rm
+                else:
+                    rm_to_use = self.rm
+                
+                resources = rm_to_use.list_resources()
+                logger.info(f"Found {len(resources)} available VISA resources")
+                return resources
+            except pyvisa.Error as e:
+                logger.error(f"Error listing VISA resources: {e}")
+                return []
+            except Exception as e:
+                logger.error(f"Unexpected error listing resources: {e}")
+                return []
+            finally:
+                # Clean up temporary resource manager if we created one
+                if temp_rm is not None:
+                    try:
+                        temp_rm.close()
+                        logger.debug("Closed temporary resource manager")
+                    except Exception as e:
+                        logger.warning(f"Error closing temporary resource manager: {e}")
+
+    def get_device_info(self) -> Dict[str, str]:
+        """
+        Get detailed information about the connected device.
+
+        Returns:
+            Dictionary with device information keys:
+            - manufacturer: Device manufacturer
+            - model: Device model
+            - serial_number: Device serial number
+            - address: VISA resource address
+            Or empty dict if not connected.
+        """
+        with QMutexLocker(self._mutex):
+            if not self._connected or not self.instrument:
+                logger.warning("Attempted to get device info while not connected")
+                return {}
+            
+            try:
+                # Query device identification
+                idn = self.instrument.query("*IDN?").strip()
+                
+                # Parse IDN response (format: manufacturer,model,serial,version)
+                parts = idn.split(',')
+                
+                device_info = {
+                    'address': self.resource_string,
+                    'idn': idn
+                }
+                
+                if len(parts) >= 4:
+                    device_info['manufacturer'] = parts[0].strip()
+                    device_info['model'] = parts[1].strip()
+                    device_info['serial_number'] = parts[2].strip()
+                    device_info['version'] = parts[3].strip()
+                elif len(parts) >= 1:
+                    device_info['manufacturer'] = parts[0].strip()
+                
+                logger.info(f"Device info: {device_info}")
+                return device_info
+                
+            except pyvisa.Error as e:
+                logger.error(f"VISA error getting device info: {e}")
+                return {}
+            except Exception as e:
+                logger.error(f"Unexpected error getting device info: {e}")
+                return {}
