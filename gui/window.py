@@ -11,7 +11,7 @@ from PySide6.QtGui import QFont
 import logging
 
 from .widgets import DigitalIndicator, ChannelIndicator
-from hardware import VisaInterface, VisaSimulator, MeasurementType
+from hardware import VisaInterface, VisaSimulator, MeasurementType, AsyncScanManager
 
 logger = logging.getLogger(__name__)
 
@@ -26,13 +26,18 @@ class MainWindow(QMainWindow):
         self._device = None  # Will be VisaInterface or VisaSimulator
         self._use_simulator = False  # Set to False to use real device
 
-        # Timer for multi-channel scanning (default 1s)
-        self.scan_timer = QTimer()
-        self.scan_timer.timeout.connect(self._on_scan_timer)
+        # Async scan manager for non-blocking scanning
+        self._scan_manager: AsyncScanManager = None
 
         # Channel indicators (1-16)
         self._channel_indicators = {}
         self._scanning = False
+        
+        # Activity indicator animation timer
+        self._activity_timer = QTimer()
+        self._activity_timer.timeout.connect(self._update_activity_indicator)
+        self._activity_symbols = ["●", "○", "◎", "◉"]
+        self._activity_index = 0
 
         self._setup_ui()
         self._initialize_device()
@@ -277,6 +282,22 @@ class MainWindow(QMainWindow):
         interval_value_font.setBold(True)
         self.interval_value_label.setFont(interval_value_font)
         layout.addWidget(self.interval_value_label)
+        layout.addSpacing(30)
+
+        # Scanning status indicator
+        self.scanning_status_label = QLabel("Idle")
+        self.scanning_status_label.setStyleSheet("color: #aaaaaa;")
+        status_font = QFont()
+        status_font.setPointSize(11)
+        self.scanning_status_label.setFont(status_font)
+        self.scanning_status_label.setFixedWidth(60)
+        layout.addWidget(self.scanning_status_label)
+
+        # Scanning activity indicator (simple text-based spinner)
+        self.activity_indicator = QLabel("●")
+        self.activity_indicator.setStyleSheet("color: #555555; font-size: 20px;")
+        self.activity_indicator.setFixedWidth(30)
+        layout.addWidget(self.activity_indicator)
 
         layout.addStretch()
 
@@ -386,34 +407,39 @@ class MainWindow(QMainWindow):
             logger.warning("Cannot start scanning: device not connected")
             return
         
-        self._scanning = True
-        self.start_button.setEnabled(False)
-        self.stop_button.setEnabled(True)
+        # Create async scan manager
+        self._scan_manager = AsyncScanManager(self._device)
         
-        # Start timer with current interval
+        # Connect signals before starting
+        self._scan_manager.connect_signals(
+            on_scan_complete=self._on_scan_complete,
+            on_scan_error=self._on_scan_error,
+            on_channel_read=self._on_channel_read,
+            on_scan_started=self._on_scan_started,
+            on_scan_stopped=self._on_scan_stopped
+        )
+        
+        # Start scanning with current interval
         interval = self.interval_slider.value()
-        self.scan_timer.start(interval)
-        
-        logger.info(f"Started scanning with interval {interval}ms")
+        if self._scan_manager.start(interval):
+            logger.info(f"Started async scanning with interval {interval}ms")
+        else:
+            logger.error("Failed to start async scanning")
+            self._scan_manager = None
 
     def _stop_scanning(self) -> None:
         """Stop multi-channel scanning."""
-        self._scanning = False
-        self.start_button.setEnabled(True)
-        self.stop_button.setEnabled(False)
-        
-        # Stop timer
-        self.scan_timer.stop()
-        
-        logger.info("Stopped scanning")
+        if self._scan_manager:
+            self._scan_manager.stop()
+            logger.info("Stopped async scanning")
 
     def _on_interval_changed(self, value: int) -> None:
         """Handle scan interval slider change."""
         self.interval_value_label.setText(f"{value} ms")
         
-        # Update timer interval if scanning
-        if self._scanning:
-            self.scan_timer.setInterval(value)
+        # Update scan manager interval if scanning
+        if self._scan_manager and self._scan_manager.is_scanning():
+            self._scan_manager.set_interval(value)
             logger.info(f"Updated scan interval to {value}ms")
 
     def _on_measurement_type_changed(self, channel_num: int, measurement_type: str) -> None:
@@ -427,16 +453,9 @@ class MainWindow(QMainWindow):
             except ValueError:
                 logger.error(f"Invalid measurement type: {measurement_type}")
 
-    def _on_scan_timer(self) -> None:
-        """Handle periodic scanning timer."""
-        if not self._device.is_connected():
-            self._stop_scanning()
-            return
-        
-        # Read all channels
-        measurements = self._device.read_all_channels()
-        
-        # Update channel indicators
+    def _on_scan_complete(self, measurements: object) -> None:
+        """Handle scan complete signal from async worker."""
+        # Update channel indicators with all measurements
         for channel_num, value in measurements.items():
             indicator = self._channel_indicators.get(channel_num)
             if indicator:
@@ -448,6 +467,67 @@ class MainWindow(QMainWindow):
                     indicator.reset_status()
                 else:
                     indicator.set_status("Error", error=True)
+        
+        logger.debug(f"Scan complete: {len(measurements)} channels updated")
+
+    def _on_scan_error(self, error_msg: str) -> None:
+        """Handle scan error signal from async worker."""
+        logger.error(f"Scan error: {error_msg}")
+        self.status_label.setText(f"Error: {error_msg}")
+        self.status_label.setStyleSheet("color: #ff6b6b;")
+        
+        # Stop scanning on error - scan_stopped signal will handle cleanup
+        if self._scan_manager and self._scan_manager.is_scanning():
+            self._scan_manager.stop()
+
+    def _on_channel_read(self, channel_num: int, value: float) -> None:
+        """Handle individual channel read signal for progress feedback."""
+        # This can be used to highlight active channel reading
+        indicator = self._channel_indicators.get(channel_num)
+        if indicator:
+            # Briefly highlight the channel being read
+            indicator.set_status("Reading...", error=False)
+            # Reset status will be called when scan completes
+
+    def _on_scan_started(self) -> None:
+        """Handle scan started signal from async worker."""
+        self._scanning = True
+        self.start_button.setEnabled(False)
+        self.stop_button.setEnabled(True)
+        
+        # Update progress indicators
+        self.scanning_status_label.setText("Scanning")
+        self.scanning_status_label.setStyleSheet("color: #51cf66;")
+        self.activity_indicator.setStyleSheet("color: #51cf66; font-size: 20px;")
+        self._activity_timer.start(200)  # Update every 200ms
+        
+        logger.info("Scanning started")
+
+    def _on_scan_stopped(self) -> None:
+        """Handle scan stopped signal from async worker."""
+        # Update UI state
+        self._scanning = False
+        self.start_button.setEnabled(True)
+        self.stop_button.setEnabled(False)
+        
+        # Update progress indicators
+        self.scanning_status_label.setText("Idle")
+        self.scanning_status_label.setStyleSheet("color: #aaaaaa;")
+        self.activity_indicator.setStyleSheet("color: #555555; font-size: 20px;")
+        self.activity_indicator.setText("●")
+        self._activity_timer.stop()
+        
+        # Clean up scan manager
+        if self._scan_manager:
+            self._scan_manager.deleteLater()
+            self._scan_manager = None
+        
+        logger.info("Scanning stopped")
+    
+    def _update_activity_indicator(self) -> None:
+        """Update activity indicator animation."""
+        self._activity_index = (self._activity_index + 1) % len(self._activity_symbols)
+        self.activity_indicator.setText(self._activity_symbols[self._activity_index])
 
     def _get_unit_for_measurement_type(self, measurement_type: str) -> str:
         """
@@ -477,9 +557,9 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:
         """Handle window close event."""
-        # Stop scanning and disconnect
-        if self._scanning:
-            self._stop_scanning()
+        # Stop async scanning and disconnect
+        if self._scan_manager:
+            self._scan_manager.stop()
         if self._device and self._device.is_connected():
             self._device.disconnect()
         event.accept()

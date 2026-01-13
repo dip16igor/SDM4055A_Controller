@@ -7,6 +7,7 @@ import time
 from typing import Optional, Dict
 import logging
 from enum import Enum
+from PySide6.QtCore import QMutex, QMutexLocker
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,9 @@ class VisaSimulator:
         self.resource_string = resource_string
         self._connected = False
         
+        # Mutex for thread-safe access
+        self._mutex = QMutex()
+        
         # Channel configurations (1-16)
         self._channel_configs: Dict[int, ChannelConfig] = {}
         self._initialize_channels()
@@ -83,18 +87,21 @@ class VisaSimulator:
         Returns:
             True (always successful in simulator mode).
         """
-        self._connected = True
-        logger.info("Simulator: Connected (mock device)")
-        return True
+        with QMutexLocker(self._mutex):
+            self._connected = True
+            logger.info("Simulator: Connected (mock device)")
+            return True
 
     def disconnect(self) -> None:
         """Simulate disconnection from the multimeter."""
-        self._connected = False
-        logger.info("Simulator: Disconnected")
+        with QMutexLocker(self._mutex):
+            self._connected = False
+            logger.info("Simulator: Disconnected")
 
     def is_connected(self) -> bool:
         """Check if device is connected."""
-        return self._connected
+        with QMutexLocker(self._mutex):
+            return self._connected
 
     def read_measurement(self) -> Optional[float]:
         """
@@ -242,10 +249,11 @@ class VisaSimulator:
         Returns:
             Dictionary mapping channel numbers to simulated measurement values.
         """
-        results = {}
-        for channel_num in range(1, 17):
-            results[channel_num] = self.read_channel_measurement(channel_num)
-        return results
+        with QMutexLocker(self._mutex):
+            results = {}
+            for channel_num in range(1, 17):
+                results[channel_num] = self.read_channel_measurement(channel_num)
+            return results
 
     def get_device_address(self) -> str:
         """

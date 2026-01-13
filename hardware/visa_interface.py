@@ -7,6 +7,7 @@ from typing import Optional, Dict, List
 import logging
 import time
 from enum import Enum
+from PySide6.QtCore import QMutex, QMutexLocker
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,9 @@ class VisaInterface:
         self._connected = False
         self._scan_mode_enabled = False
         
+        # Mutex for thread-safe access to device
+        self._mutex = QMutex()
+        
         # Channel configurations (1-16)
         self._channel_configs: Dict[int, ChannelConfig] = {}
         self._initialize_channels()
@@ -70,52 +74,54 @@ class VisaInterface:
         Returns:
             True if connection successful, False otherwise.
         """
-        try:
-            self.rm = pyvisa.ResourceManager()
+        with QMutexLocker(self._mutex):
+            try:
+                self.rm = pyvisa.ResourceManager()
 
-            # Auto-detect device if resource string not provided
-            if not self.resource_string:
-                resources = self.rm.list_resources()
-                if not resources:
-                    logger.error("No VISA resources found")
-                    return False
-                # Use first USB resource
-                self.resource_string = next((r for r in resources if "USB" in r), resources[0])
-                logger.info(f"Auto-detected resource: {self.resource_string}")
+                # Auto-detect device if resource string not provided
+                if not self.resource_string:
+                    resources = self.rm.list_resources()
+                    if not resources:
+                        logger.error("No VISA resources found")
+                        return False
+                    # Use first USB resource
+                    self.resource_string = next((r for r in resources if "USB" in r), resources[0])
+                    logger.info(f"Auto-detected resource: {self.resource_string}")
 
-            self.instrument = self.rm.open_resource(self.resource_string)
-            self.instrument.timeout = 2000  # 2 second timeout
+                self.instrument = self.rm.open_resource(self.resource_string)
+                self.instrument.timeout = 2000  # 2 second timeout
 
-            # Send identification query to verify connection
-            idn = self.instrument.query("*IDN?")
-            logger.info(f"Connected to: {idn.strip()}")
+                # Send identification query to verify connection
+                idn = self.instrument.query("*IDN?")
+                logger.info(f"Connected to: {idn.strip()}")
 
-            self._connected = True
-            return True
+                self._connected = True
+                return True
 
-        except pyvisa.Error as e:
-            logger.error(f"VISA connection error: {e}")
-            self._connected = False
-            return False
-        except Exception as e:
-            logger.error(f"Unexpected error during connection: {e}")
-            self._connected = False
-            return False
+            except pyvisa.Error as e:
+                logger.error(f"VISA connection error: {e}")
+                self._connected = False
+                return False
+            except Exception as e:
+                logger.error(f"Unexpected error during connection: {e}")
+                self._connected = False
+                return False
 
     def disconnect(self) -> None:
         """Terminate connection to multimeter."""
-        try:
-            if self.instrument:
-                self.instrument.close()
-                self.instrument = None
-            if self.rm:
-                self.rm.close()
-                self.rm = None
-            self._connected = False
-            self._scan_mode_enabled = False
-            logger.info("Disconnected from device")
-        except Exception as e:
-            logger.error(f"Error during disconnection: {e}")
+        with QMutexLocker(self._mutex):
+            try:
+                if self.instrument:
+                    self.instrument.close()
+                    self.instrument = None
+                if self.rm:
+                    self.rm.close()
+                    self.rm = None
+                self._connected = False
+                self._scan_mode_enabled = False
+                logger.info("Disconnected from device")
+            except Exception as e:
+                logger.error(f"Error during disconnection: {e}")
 
     def is_connected(self) -> bool:
         """Check if device is connected."""
@@ -128,24 +134,25 @@ class VisaInterface:
         Returns:
             Measurement value as float, or None if read failed.
         """
-        if not self._connected or not self.instrument:
-            logger.warning("Attempted to read while not connected")
-            return None
+        with QMutexLocker(self._mutex):
+            if not self._connected or not self.instrument:
+                logger.warning("Attempted to read while not connected")
+                return None
 
-        try:
-            # Query measurement value
-            value_str = self.instrument.query(":MEAS:VOLT:DC?")
-            value = float(value_str.strip())
-            return value
-        except pyvisa.Error as e:
-            logger.error(f"VISA read error: {e}")
-            return None
-        except ValueError as e:
-            logger.error(f"Value conversion error: {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Unexpected error during read: {e}")
-            return None
+            try:
+                # Query measurement value
+                value_str = self.instrument.query(":MEAS:VOLT:DC?")
+                value = float(value_str.strip())
+                return value
+            except pyvisa.Error as e:
+                logger.error(f"VISA read error: {e}")
+                return None
+            except ValueError as e:
+                logger.error(f"Value conversion error: {e}")
+                return None
+            except Exception as e:
+                logger.error(f"Unexpected error during read: {e}")
+                return None
 
     def set_measurement_function(self, function: str = "VOLT:DC") -> bool:
         """
@@ -464,51 +471,52 @@ class VisaInterface:
         Returns:
             Dictionary mapping channel numbers to measurement values (or None if failed).
         """
-        if not self._connected or not self.instrument:
-            logger.warning("Attempted to read while not connected")
-            return {}
+        with QMutexLocker(self._mutex):
+            if not self._connected or not self.instrument:
+                logger.warning("Attempted to read while not connected")
+                return {}
 
-        try:
-            # Enable scan mode if not already enabled
-            if not self._scan_mode_enabled:
-                if not self.enable_scan_mode():
-                    logger.error("Failed to enable scan mode")
+            try:
+                # Enable scan mode if not already enabled
+                if not self._scan_mode_enabled:
+                    if not self.enable_scan_mode():
+                        logger.error("Failed to enable scan mode")
+                        return {}
+                
+                # Configure all channels
+                if not self.configure_all_scan_channels():
+                    logger.error("Failed to configure channels")
                     return {}
-            
-            # Configure all channels
-            if not self.configure_all_scan_channels():
-                logger.error("Failed to configure channels")
+                
+                # Set scan limits (all 16 channels)
+                if not self.set_scan_limits(1, 16):
+                    logger.error("Failed to set scan limits")
+                    return {}
+                
+                # Start scan
+                if not self.start_scan():
+                    logger.error("Failed to start scan")
+                    return {}
+                
+                # Wait for scan to complete
+                max_wait_time = 30  # 30 seconds maximum wait time
+                start_time = time.time()
+                while time.time() - start_time < max_wait_time:
+                    if self.is_scan_complete():
+                        break
+                    time.sleep(0.1)  # Poll every 100ms
+                else:
+                    logger.warning("Scan timeout - may not have completed")
+                
+                # Read data from all channels
+                results = {}
+                for channel_num in range(1, 17):
+                    results[channel_num] = self.get_scan_data(channel_num)
+                
+                return results
+            except Exception as e:
+                logger.error(f"Unexpected error during multi-channel scan: {e}")
                 return {}
-            
-            # Set scan limits (all 16 channels)
-            if not self.set_scan_limits(1, 16):
-                logger.error("Failed to set scan limits")
-                return {}
-            
-            # Start scan
-            if not self.start_scan():
-                logger.error("Failed to start scan")
-                return {}
-            
-            # Wait for scan to complete
-            max_wait_time = 30  # 30 seconds maximum wait time
-            start_time = time.time()
-            while time.time() - start_time < max_wait_time:
-                if self.is_scan_complete():
-                    break
-                time.sleep(0.1)  # Poll every 100ms
-            else:
-                logger.warning("Scan timeout - may not have completed")
-            
-            # Read data from all channels
-            results = {}
-            for channel_num in range(1, 17):
-                results[channel_num] = self.get_scan_data(channel_num)
-            
-            return results
-        except Exception as e:
-            logger.error(f"Unexpected error during multi-channel scan: {e}")
-            return {}
 
     def get_device_address(self) -> str:
         """
