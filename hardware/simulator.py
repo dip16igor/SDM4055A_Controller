@@ -4,7 +4,7 @@ Simulator for SDM4055A-SC multimeter (mock device for development).
 
 import random
 import time
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 import logging
 from PySide6.QtCore import QMutex, QMutexLocker
 
