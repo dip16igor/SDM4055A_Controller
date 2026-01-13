@@ -90,6 +90,10 @@ class MainWindow(QMainWindow):
         self.btn_refresh_devices.clicked.connect(self._on_refresh_devices)
 
         self.device_combo = QComboBox()
+        # Minimum width to show full device names
+        self.device_combo.setMinimumWidth(400)
+        self.device_combo.setMinimumContentsLength(
+            50)  # Minimum characters to display
         self.device_combo.currentIndexChanged.connect(self._on_device_selected)
 
         self.device_info_label = QLabel("No device connected")
@@ -163,7 +167,8 @@ class MainWindow(QMainWindow):
 
         # Connect channel measurement type change signals
         for indicator in self.channel_indicators:
-            indicator.measurement_type_changed.connect(self._on_channel_measurement_type_changed)
+            indicator.measurement_type_changed.connect(
+                self._on_channel_measurement_type_changed)
 
     @Slot()
     def _on_connect_clicked(self) -> None:
@@ -186,7 +191,8 @@ class MainWindow(QMainWindow):
             self._update_device_info_display(device_info)
 
             self.status_label.setText("Connected")
-            self.status_label.setStyleSheet("color: #51cf66; font-weight: bold;")
+            self.status_label.setStyleSheet(
+                "color: #51cf66; font-weight: bold;")
             self.btn_connect.setEnabled(False)
             self.btn_disconnect.setEnabled(True)
             self.btn_start_scan.setEnabled(True)
@@ -196,7 +202,8 @@ class MainWindow(QMainWindow):
             logger.info("Successfully connected to device")
         else:
             self.status_label.setText("Error")
-            self.status_label.setStyleSheet("color: #ff6b6b; font-weight: bold;")
+            self.status_label.setStyleSheet(
+                "color: #ff6b6b; font-weight: bold;")
             QMessageBox.critical(
                 self,
                 "Connection Error",
@@ -249,7 +256,8 @@ class MainWindow(QMainWindow):
             channel_num: Channel number (1-16).
             measurement_type: New measurement type string.
         """
-        logger.info(f"Channel {channel_num} measurement type changed to {measurement_type}")
+        logger.info(
+            f"Channel {channel_num} measurement type changed to {measurement_type}")
         self._channel_measurement_types[channel_num] = measurement_type
 
     def get_all_channel_measurement_types(self) -> Dict[int, str]:
@@ -272,7 +280,8 @@ class MainWindow(QMainWindow):
     def _start_scanning(self) -> None:
         """Start continuous scanning."""
         if not self.visa.is_connected():
-            QMessageBox.warning(self, "Not Connected", "Please connect to device first")
+            QMessageBox.warning(self, "Not Connected",
+                                "Please connect to device first")
             return
 
         # Stop any existing scan
@@ -285,7 +294,8 @@ class MainWindow(QMainWindow):
         # Configure device with channel measurement types
         channel_configs = self.get_all_channel_measurement_types()
         if not self.scan_manager.configure_channels(channel_configs):
-            QMessageBox.warning(self, "Configuration Error", "Failed to configure channels with measurement types")
+            QMessageBox.warning(self, "Configuration Error",
+                                "Failed to configure channels with measurement types")
             return
 
         # Connect signals
@@ -308,7 +318,8 @@ class MainWindow(QMainWindow):
     def _single_scan(self) -> None:
         """Perform a single scan of all channels."""
         if not self.visa.is_connected():
-            QMessageBox.warning(self, "Not Connected", "Please connect to device first")
+            QMessageBox.warning(self, "Not Connected",
+                                "Please connect to device first")
             return
 
         self.status_updated.emit("Performing single scan...")
@@ -321,7 +332,8 @@ class MainWindow(QMainWindow):
         # Configure device with channel measurement types
         channel_configs = self.get_all_channel_measurement_types()
         if not temp_scan_manager.configure_channels(channel_configs):
-            QMessageBox.warning(self, "Configuration Error", "Failed to configure channels with measurement types")
+            QMessageBox.warning(self, "Configuration Error",
+                                "Failed to configure channels with measurement types")
             return
 
         # Connect signals
@@ -356,8 +368,10 @@ class MainWindow(QMainWindow):
                 indicator.set_value(value)
 
         # Update status
-        self.lbl_scan_status.setText(f"Scan complete - {len(measurements)} channels")
-        self.status_updated.emit(f"Scan complete - {len(measurements)} channels measured")
+        self.lbl_scan_status.setText(
+            f"Scan complete - {len(measurements)} channels")
+        self.status_updated.emit(
+            f"Scan complete - {len(measurements)} channels measured")
 
     @Slot()
     def _on_scan_stopped(self) -> None:
@@ -385,8 +399,10 @@ class MainWindow(QMainWindow):
                 indicator.set_value(value)
 
         # Update status
-        self.lbl_scan_status.setText(f"Scan complete - {len(measurements)} channels")
-        self.status_updated.emit(f"Single scan complete - {len(measurements)} channels measured")
+        self.lbl_scan_status.setText(
+            f"Scan complete - {len(measurements)} channels")
+        self.status_updated.emit(
+            f"Single scan complete - {len(measurements)} channels measured")
 
     @Slot(int, float)
     def _on_channel_read(self, channel_num: int, value: float) -> None:
