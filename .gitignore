@@ -1,0 +1,42 @@
+# Virtual environments
+venv/
+venv_new/
+.venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+*.exe
+*.spec
+
+# Logs
+*.log
+test_output.txt
+
+# Temporary files
+*.tmp
+*.bak
+check_visa_devices.py
+
+# OpenSpec
+#openspec/changes/archive/
