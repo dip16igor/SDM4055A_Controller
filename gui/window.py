@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 
 from hardware.visa_interface import VisaInterface, MeasurementType
 from hardware.async_worker import AsyncScanManager
+from hardware.simulator import VisaSimulator
 from gui.widgets import ChannelIndicator
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,12 @@ class MainWindow(QMainWindow):
 
         # Initialize VISA interface
         self.visa = VisaInterface()
+
+        # Initialize simulator (for testing without hardware)
+        self.simulator = VisaSimulator()
+
+        # Flag to track if using simulator
+        self._using_simulator = False
 
         # Async scan manager
         self.scan_manager: Optional[AsyncScanManager] = None
@@ -178,42 +185,80 @@ class MainWindow(QMainWindow):
 
         # Get selected device from combo box
         selected_device = self.device_combo.currentData()
-        if selected_device:
-            self.visa.resource_string = selected_device
-            logger.info(f"Using selected device: {selected_device}")
 
-        # Try to connect
-        success = self.visa.connect()
+        # Check if simulator is selected
+        if selected_device == "SIMULATOR":
+            self._using_simulator = True
+            logger.info("Using simulator mode")
 
-        if success:
-            # Update device info display
-            device_info = self.visa.get_device_info()
-            self._update_device_info_display(device_info)
+            # Connect to simulator
+            success = self.simulator.connect()
 
-            self.status_label.setText("Connected")
-            self.status_label.setStyleSheet(
-                "color: #51cf66; font-weight: bold;")
-            self.btn_connect.setEnabled(False)
-            self.btn_disconnect.setEnabled(True)
-            self.btn_start_scan.setEnabled(True)
-            self.btn_single_scan.setEnabled(True)
-            self.connection_changed.emit(True)
-            self.status_updated.emit("Connected to SDM4055A-SC")
-            logger.info("Successfully connected to device")
+            if success:
+                # Update device info display
+                device_info = self.simulator.get_device_info()
+                self._update_device_info_display(device_info)
+
+                self.status_label.setText("Connected (Simulator)")
+                self.status_label.setStyleSheet(
+                    "color: #51cf66; font-weight: bold;")
+                self.btn_connect.setEnabled(False)
+                self.btn_disconnect.setEnabled(True)
+                self.btn_start_scan.setEnabled(True)
+                self.btn_single_scan.setEnabled(True)
+                self.connection_changed.emit(True)
+                self.status_updated.emit("Connected to Simulator")
+                logger.info("Successfully connected to simulator")
+            else:
+                self.status_label.setText("Error")
+                self.status_label.setStyleSheet(
+                    "color: #ff6b6b; font-weight: bold;")
+                QMessageBox.critical(
+                    self,
+                    "Connection Error",
+                    "Failed to connect to simulator.",
+                )
+                self.status_updated.emit("Connection failed")
+                logger.error("Failed to connect to simulator")
         else:
-            self.status_label.setText("Error")
-            self.status_label.setStyleSheet(
-                "color: #ff6b6b; font-weight: bold;")
-            QMessageBox.critical(
-                self,
-                "Connection Error",
-                "Failed to connect to device. Please check:\n"
-                "1. Device is powered on\n"
-                "2. USB cable is connected\n"
-                "3. VISA drivers are installed",
-            )
-            self.status_updated.emit("Connection failed")
-            logger.error("Failed to connect to device")
+            # Connect to physical device
+            self._using_simulator = False
+            if selected_device:
+                self.visa.resource_string = selected_device
+                logger.info(f"Using selected device: {selected_device}")
+
+            # Try to connect
+            success = self.visa.connect()
+
+            if success:
+                # Update device info display
+                device_info = self.visa.get_device_info()
+                self._update_device_info_display(device_info)
+
+                self.status_label.setText("Connected")
+                self.status_label.setStyleSheet(
+                    "color: #51cf66; font-weight: bold;")
+                self.btn_connect.setEnabled(False)
+                self.btn_disconnect.setEnabled(True)
+                self.btn_start_scan.setEnabled(True)
+                self.btn_single_scan.setEnabled(True)
+                self.connection_changed.emit(True)
+                self.status_updated.emit("Connected to SDM4055A-SC")
+                logger.info("Successfully connected to device")
+            else:
+                self.status_label.setText("Error")
+                self.status_label.setStyleSheet(
+                    "color: #ff6b6b; font-weight: bold;")
+                QMessageBox.critical(
+                    self,
+                    "Connection Error",
+                    "Failed to connect to device. Please check:\n"
+                    "1. Device is powered on\n"
+                    "2. USB cable is connected\n"
+                    "3. VISA drivers are installed",
+                )
+                self.status_updated.emit("Connection failed")
+                logger.error("Failed to connect to device")
 
     @Slot()
     def _on_disconnect_clicked(self) -> None:
@@ -223,7 +268,12 @@ class MainWindow(QMainWindow):
             self._stop_scanning()
 
         # Disconnect
-        self.visa.disconnect()
+        if self._using_simulator:
+            self.simulator.disconnect()
+            logger.info("Disconnected from simulator")
+        else:
+            self.visa.disconnect()
+            logger.info("Disconnected from device")
 
         # Update UI
         self.status_label.setText("Disconnected")
@@ -236,7 +286,7 @@ class MainWindow(QMainWindow):
         self.device_info_label.setText("No device connected")
         self.connection_changed.emit(False)
         self.status_updated.emit("Disconnected from device")
-        logger.info("Disconnected from device")
+        self._using_simulator = False
 
     def _initialize_channel_measurement_types(self) -> None:
         """Initialize default measurement types for all channels."""
@@ -275,21 +325,30 @@ class MainWindow(QMainWindow):
         if not connected:
             # Reset all channel indicators
             for indicator in self.channel_indicators:
-                indicator.reset()
+                indicator.reset_status()
 
     def _start_scanning(self) -> None:
         """Start continuous scanning."""
-        if not self.visa.is_connected():
-            QMessageBox.warning(self, "Not Connected",
-                                "Please connect to device first")
-            return
+        # Check connection status based on mode
+        if self._using_simulator:
+            if not self.simulator.is_connected():
+                QMessageBox.warning(self, "Not Connected",
+                                    "Please connect to simulator first")
+                return
+            device_interface = self.simulator
+        else:
+            if not self.visa.is_connected():
+                QMessageBox.warning(self, "Not Connected",
+                                    "Please connect to device first")
+                return
+            device_interface = self.visa
 
         # Stop any existing scan
         if self.scan_manager is not None and self.scan_manager.is_scanning():
             self.scan_manager.stop()
 
         # Create new scan manager
-        self.scan_manager = AsyncScanManager(self.visa)
+        self.scan_manager = AsyncScanManager(device_interface)
 
         # Configure device with channel measurement types
         channel_configs = self.get_all_channel_measurement_types()
@@ -317,17 +376,26 @@ class MainWindow(QMainWindow):
 
     def _single_scan(self) -> None:
         """Perform a single scan of all channels."""
-        if not self.visa.is_connected():
-            QMessageBox.warning(self, "Not Connected",
-                                "Please connect to device first")
-            return
+        # Check connection status based on mode
+        if self._using_simulator:
+            if not self.simulator.is_connected():
+                QMessageBox.warning(self, "Not Connected",
+                                    "Please connect to simulator first")
+                return
+            device_interface = self.simulator
+        else:
+            if not self.visa.is_connected():
+                QMessageBox.warning(self, "Not Connected",
+                                    "Please connect to device first")
+                return
+            device_interface = self.visa
 
         self.status_updated.emit("Performing single scan...")
         self.lbl_scan_status.setText("Scanning...")
         QApplication.processEvents()
 
         # Create temporary scan manager for single scan
-        temp_scan_manager = AsyncScanManager(self.visa)
+        temp_scan_manager = AsyncScanManager(device_interface)
 
         # Configure device with channel measurement types
         channel_configs = self.get_all_channel_measurement_types()
@@ -428,8 +496,12 @@ class MainWindow(QMainWindow):
             self.scan_manager.stop()
 
         # Disconnect from device
-        if self.visa.is_connected():
-            self.visa.disconnect()
+        if self._using_simulator:
+            if self.simulator.is_connected():
+                self.simulator.disconnect()
+        else:
+            if self.visa.is_connected():
+                self.visa.disconnect()
 
         event.accept()
         logger.info("Application closed")
@@ -444,22 +516,29 @@ class MainWindow(QMainWindow):
 
         # Update device combo box
         self.device_combo.clear()
+
+        # Add simulator option first
+        simulator_name = "SIMULATOR - Virtual SDM4055A-SC (for testing)"
+        self.device_combo.addItem(simulator_name, "SIMULATOR")
+        logger.debug("Added simulator to device list")
+
         if resources:
             for resource in resources:
                 self.device_combo.addItem(resource, resource)
                 logger.debug(f"Added device to list: {resource}")
             self.device_combo.setEnabled(True)
 
-            # Select first device by default
-            if resources:
-                self.device_combo.setCurrentIndex(0)
-                logger.info(f"Auto-selected device: {resources[0]}")
+            # Select first device by default (simulator)
+            self.device_combo.setCurrentIndex(0)
+            logger.info(f"Auto-selected device: SIMULATOR")
 
-            self.status_updated.emit(f"Found {len(resources)} device(s)")
+            self.status_updated.emit(
+                f"Found {len(resources)} device(s) + Simulator")
         else:
-            self.device_combo.setEnabled(False)
-            self.status_updated.emit("No VISA devices found")
-            logger.warning("No VISA resources found")
+            self.device_combo.setEnabled(True)
+            self.status_updated.emit(
+                "Simulator available (no physical devices found)")
+            logger.warning("No VISA resources found, only simulator available")
 
     def _on_device_selected(self, index: int) -> None:
         """Handle device selection from combo box."""

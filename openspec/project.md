@@ -1,17 +1,17 @@
 # Project Context
 
 ## Purpose
-The SDM4055A_Controller is a Python-based GUI application for communicating with and reading measurements from the Siglent SDM4055A-SC 5½ digit digital multimeter via USB connection using the VISA protocol.
+The SDM4055A_Controller is a Python-based GUI application for communicating with and reading measurements from Siglent SDM4055A-SC 5½ digit digital multimeter via USB connection using VISA protocol.
 
 ### Initial Phase (MVP)
 The first version focuses on a simple test application to:
-- Establish USB connection to the SDM4055A-SC multimeter
+- Establish USB connection to SDM4055A-SC multimeter
 - Read measurement data from one channel (connected to standard probes)
-- Display the measured value on a modern digital indicator
+- Display measured value on a modern digital indicator
 - Verify basic communication and data retrieval functionality
 
 ### Future Phases
-- Multi-channel monitoring using the SC1016 scanner card (16 channels: 12 multi-purpose + 4 current)
+- Multi-channel monitoring using SC1016 scanner card (16 channels: 12 multi-purpose + 4 current)
 - Historical data logging and analysis
 - Advanced measurement parameters (all supported functions)
 - Configuration and calibration features
@@ -49,7 +49,7 @@ The first version focuses on a simple test application to:
 ### Architecture Patterns
 
 #### Application Structure
-- **Entry Point**: `main.py` initializes the `QApplication`, applies the theme, and launches the `MainWindow`
+- **Entry Point**: `main.py` initializes `QApplication`, applies theme, and launches `MainWindow`
 - **Modular Design**:
   - `gui/`: Contains all UI-related code (`window.py`, `widgets.py`)
   - `hardware/`: Abstraction layer for device communication (`visa_interface.py` vs `simulator.py`)
@@ -132,13 +132,13 @@ The **Siglent SDM4055A-SC** is a 5½ digit (220,000 count) high-precision digita
 - **Remote Access**: VNC and web server support
 
 ### Initial Phase Scope
-For the MVP, we focus on:
+For MVP, we focus on:
 - **Single Channel**: Reading from one measurement channel (standard probe connection to front panel)
 - **Basic Measurement**: Primary measurement type (typically DC voltage or current based on probe configuration)
 - **Connection Test**: Verify USB/VISA communication establishment
 - **Real-time Display**: Show current measurement value with modern UI
 
-The device communicates via USB using the VISA protocol, which is an industry standard for instrument control. VISA provides a unified API for communicating with various test and measurement instruments, regardless of the underlying bus (USB, GPIB, Ethernet, Serial). The application uses PyVISA, a Python wrapper around the VISA library, to communicate with the device. The SDM4055A-SC supports SCPI (Standard Commands for Programmable Instruments) commands for remote control.
+The device communicates via USB using VISA protocol, which is an industry standard for instrument control. VISA provides a unified API for communicating with various test and measurement instruments, regardless of underlying bus (USB, GPIB, Ethernet, Serial). The application uses PyVISA, a Python wrapper around VISA library, to communicate with device. The SDM4055A-SC supports SCPI (Standard Commands for Programmable Instruments) commands for remote control.
 
 ## Important Constraints
 - **USB Port Availability**: Requires exclusive access to USB port during operation
@@ -154,7 +154,7 @@ The device communicates via USB using the VISA protocol, which is an industry st
 ## External Dependencies
 - **Hardware**: Siglent SDM4055A-SC 5½ digit digital multimeter with USB interface
 - **VISA Runtime**: NI-VISA, Keysight VISA, or compatible VISA implementation
-- **USB Drivers**: Device-specific USB drivers if required by the meter
+- **USB Drivers**: Device-specific USB drivers if required by meter
 - **Python Packages**:
   - `PySide6>=6.0.0`: Qt for Python GUI framework
   - `qt-material>=2.14`: Modern dark theme for Qt applications
@@ -169,7 +169,52 @@ The device communicates via USB using the VISA protocol, which is an industry st
 
 ## Build System Details
 - **Environment**: Managed via `uv` for fast, modern Python package management
-- **Build Script**: `build_exe.bat` automates the `PyInstaller` command with:
+- **Build Script**: `build_exe.bat` automates `PyInstaller` command with:
   - Hidden imports: `qt_material` (required for theming)
   - Data file inclusion: `gui`, `hardware` directories
   - Standalone Windows executable output
+
+## Recent Changes (2026-01-13)
+
+### Bug Fixes
+1. **hardware/simulator.py** - Fixed missing `List` import from typing module
+   - Added `List` to imports to resolve NameError
+
+2. **gui/window.py** - Fixed narrow device selection dropdown
+   - Increased minimum width to 400px
+   - Set minimum contents length to 50 characters
+   - Ensures full device names are visible
+
+3. **gui/window.py** - Fixed incorrect method call
+   - Changed `indicator.reset()` to `indicator.reset_status()`
+   - Corrects AttributeError when disconnecting
+
+4. **hardware/async_worker.py** - Fixed RuntimeError during thread cleanup
+   - Added try-catch for RuntimeError when thread is already deleted
+   - Prevents crashes during application shutdown
+
+### New Features
+1. **Virtual Multimeter Simulator Integration**
+   - Added simulator as first option in device selection dropdown
+   - Allows testing without physical hardware
+   - Supports all 16 channels with realistic measurements:
+     - Channels 1-12: DC voltage ~5V
+     - Channels 13-16: DC current ~0.5A
+   - Fully compatible with existing AsyncScanManager
+   - Auto-selected on application startup
+
+### Discovered VISA Devices
+The following physical devices were detected on the system:
+- **ASRL3::INSTR (COM3)**: USB-SERIAL CH340 adapter (VID_1A86&PID_7523)
+- **ASRL4::INSTR (COM4)**: Bluetooth Serial Port
+- **ASRL5::INSTR (COM5)**: Bluetooth Serial Port
+
+### Running the Application
+```bash
+# Using venv_new virtual environment
+venv_new\Scripts\python.exe main.py
+
+# Or after activating the environment
+venv_new\Scripts\activate
+python main.py
+```
