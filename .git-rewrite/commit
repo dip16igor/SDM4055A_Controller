@@ -1,6 +1,0 @@
-tree bdd4c5dbf99baaaf06332fcbf64a086db805d566
-parent db23de4b9e9c3c3822664d7f0b733d484636e8a0
-author dip16igor <dip16igor@gmail.com> 1768364255 +0500
-committer dip16igor <dip16igor@gmail.com> 1768364255 +0500
-
-docs(spec): integrate per-channel measurement type selection requirements
