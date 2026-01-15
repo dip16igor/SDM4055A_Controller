@@ -191,6 +191,9 @@ class MainWindow(QMainWindow):
         for indicator in self.channel_indicators:
             indicator.measurement_type_changed.connect(
                 self._on_channel_measurement_type_changed)
+            # Connect channel range change signals
+            indicator.range_changed.connect(
+                self._on_channel_range_changed)
 
     @Slot()
     def _on_connect_clicked(self) -> None:
@@ -650,15 +653,31 @@ class MainWindow(QMainWindow):
                 # Update internal measurement type mapping
                 self._channel_measurement_types[channel_num] = config.measurement_type
                 
+                # Set range if specified
+                if config.range_value:
+                    indicator.set_range(config.range_value)
+                
                 # Set thresholds
                 indicator.set_thresholds(config.lower_threshold, config.upper_threshold)
                 
                 logger.info(
                     f"Applied config to channel {channel_num}: "
                     f"type={config.measurement_type}, "
+                    f"range={config.range_value}, "
                     f"lower={config.lower_threshold}, "
                     f"upper={config.upper_threshold}"
                 )
         
         configured_channels = self.config_loader.get_configured_channels()
         logger.info(f"Applied configuration to {len(configured_channels)} channels: {configured_channels}")
+
+    @Slot(int, str)
+    def _on_channel_range_changed(self, channel_num: int, range_value: str) -> None:
+        """Handle channel range change.
+
+        Args:
+            channel_num: Channel number (1-16).
+            range_value: New range value string.
+        """
+        logger.info(
+            f"Channel {channel_num} range changed to {range_value}")

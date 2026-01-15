@@ -62,6 +62,17 @@ class ConfigLoader:
         "TEMP:RTD", "TEMP:THER"
     }
     
+    # Valid ranges for each measurement type
+    VALID_RANGES = {
+        "VOLT:DC": ["200 mV", "2 V", "20 V", "200 V", "1000 V", "AUTO"],
+        "VOLT:AC": ["200 mV", "2 V", "20 V", "200 V", "750 V", "AUTO"],
+        "CURR:DC": ["200 uA", "2 mA", "20 mA", "200 mA", "2 A", "10 A", "AUTO"],
+        "CURR:AC": ["20 mA", "200 mA", "2 A", "10 A", "AUTO"],
+        "RES": ["200 Ohm", "2 kOhm", "20 kOhm", "200 kOhm", "2 MOhm", "10 MOhm", "100 MOhm", "AUTO"],
+        "FRES": ["200 Ohm", "2 kOhm", "20 kOhm", "200 kOhm", "2 MOhm", "10 MOhm", "100 MOhm", "AUTO"],
+        "CAP": ["2 nF", "20 nF", "200 nF", "2 uF", "20 uF", "200 uF", "2 mF", "20 mF", "100 mF", "AUTO"],
+    }
+    
     # User-friendly names for measurement types (for validation messages)
     MEASUREMENT_TYPE_NAMES = {
         "VOLT:DC": "DC Voltage",
@@ -154,10 +165,24 @@ class ConfigLoader:
                             if measurement_type not in ['CURR:DC', 'CURR:AC']:
                                 return False, f"Row {row_num}: Only current measurements supported on channel {channel_num} (channels 13-16)"
                         
-                        # Parse range
-                        range_value = row.get('range', 'AUTO').strip().upper()
-                        if not range_value:
+                        # Parse range (case-insensitive, but preserve correct case)
+                        range_value_input = row.get('range', 'AUTO').strip()
+                        if not range_value_input:
                             range_value = 'AUTO'
+                        elif range_value_input.upper() == 'AUTO':
+                            range_value = 'AUTO'
+                        else:
+                            # Find matching range (case-insensitive)
+                            measurement_type_valid_ranges = self.VALID_RANGES.get(measurement_type, [])
+                            range_value = None
+                            for valid_range in measurement_type_valid_ranges:
+                                if valid_range.upper() == range_value_input.upper():
+                                    range_value = valid_range
+                                    break
+                            
+                            if range_value is None:
+                                valid_ranges = ', '.join(sorted(measurement_type_valid_ranges))
+                                return False, f"Row {row_num}: Invalid range '{range_value_input}' for measurement type '{measurement_type}'. Valid ranges: {valid_ranges}"
                         
                         # Parse lower threshold (optional)
                         lower_threshold = None

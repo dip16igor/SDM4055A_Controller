@@ -128,6 +128,7 @@ class ChannelIndicator(QWidget):
     """
 
     measurement_type_changed = Signal(int, str)  # Signal emitted when measurement type changes (channel_num, type)
+    range_changed = Signal(int, str)  # Signal emitted when range changes (channel_num, range_value)
 
     # Mapping of measurement types to display units
     MEASUREMENT_TYPE_TO_UNIT = {
@@ -145,6 +146,53 @@ class ChannelIndicator(QWidget):
         "TEMP:THER": "C"
     }
 
+    # Mapping of ranges to display units for each measurement type
+    RANGE_TO_UNIT = {
+        # Voltage ranges
+        "200 mV": "mV",
+        "2 V": "V",
+        "20 V": "V",
+        "200 V": "V",
+        "1000 V": "V",
+        "750 V": "V",
+        # Current ranges
+        "200 uA": "uA",
+        "2 mA": "mA",
+        "20 mA": "mA",
+        "200 mA": "mA",
+        "2 A": "A",
+        "10 A": "A",
+        # Capacitance ranges
+        "2 nF": "nF",
+        "20 nF": "nF",
+        "200 nF": "nF",
+        "2 uF": "uF",
+        "20 uF": "uF",
+        "200 uF": "uF",
+        "2 mF": "mF",
+        "20 mF": "mF",
+        "100 mF": "mF",
+        # Resistance ranges
+        "200 Ohm": "Ohm",
+        "2 kOhm": "kOhm",
+        "20 kOhm": "kOhm",
+        "200 kOhm": "kOhm",
+        "2 MOhm": "MOhm",
+        "10 MOhm": "MOhm",
+        "100 MOhm": "MOhm",
+    }
+
+    # Valid ranges for each measurement type
+    VALID_RANGES = {
+        "VOLT:DC": ["200 mV", "2 V", "20 V", "200 V", "1000 V", "AUTO"],
+        "VOLT:AC": ["200 mV", "2 V", "20 V", "200 V", "750 V", "AUTO"],
+        "CURR:DC": ["200 uA", "2 mA", "20 mA", "200 mA", "2 A", "10 A", "AUTO"],
+        "CURR:AC": ["20 mA", "200 mA", "2 A", "10 A", "AUTO"],
+        "RES": ["200 Ohm", "2 kOhm", "20 kOhm", "200 kOhm", "2 MOhm", "10 MOhm", "100 MOhm", "AUTO"],
+        "FRES": ["200 Ohm", "2 kOhm", "20 kOhm", "200 kOhm", "2 MOhm", "10 MOhm", "100 MOhm", "AUTO"],
+        "CAP": ["2 nF", "20 nF", "200 nF", "2 uF", "20 uF", "200 uF", "2 mF", "20 mF", "100 mF", "AUTO"],
+    }
+
     def __init__(self, channel_num: int, parent=None):
         """
         Initialize channel indicator.
@@ -158,6 +206,7 @@ class ChannelIndicator(QWidget):
         self._channel_num = channel_num
         self._value = 0.0
         self._is_current_channel = channel_num > 12
+        self._range_value = "AUTO"  # Default range
         
         # Set default unit based on channel type
         if self._is_current_channel:
@@ -240,6 +289,12 @@ class ChannelIndicator(QWidget):
             self.measurement_combo.addItem("Thermocouple", "TEMP:THER")
             self.measurement_combo.currentIndexChanged.connect(self._on_measurement_type_changed)
             layout.addWidget(self.measurement_combo)
+        
+        # Range selector
+        self.range_combo = QComboBox()
+        self.range_combo.addItem("AUTO", "AUTO")
+        self.range_combo.currentIndexChanged.connect(self._on_range_changed)
+        layout.addWidget(self.range_combo)
 
         # Apply card style
         self._apply_card_style()
@@ -411,6 +466,29 @@ class ChannelIndicator(QWidget):
         """
         return self.measurement_combo.currentData()
 
+    def get_range(self) -> str:
+        """
+        Get currently selected range.
+
+        Returns:
+            Range value string (e.g., "200 mV", "AUTO").
+        """
+        return self.range_combo.currentData()
+
+    def set_range(self, range_value: str) -> None:
+        """
+        Set measurement range.
+
+        Args:
+            range_value: Range value string (e.g., "200 mV", "AUTO").
+        """
+        index = self.range_combo.findData(range_value)
+        if index >= 0:
+            self.range_combo.setCurrentIndex(index)
+            # Update unit label based on new range and measurement type
+            measurement_type = self.measurement_combo.currentData()
+            self._update_unit_for_measurement_type(measurement_type)
+
     def set_measurement_type(self, measurement_type: str) -> None:
         """
         Set the measurement type.
@@ -423,6 +501,35 @@ class ChannelIndicator(QWidget):
             self.measurement_combo.setCurrentIndex(index)
             # Update unit label based on measurement type
             self._update_unit_for_measurement_type(measurement_type)
+            # Update range dropdown options for this measurement type
+            self._update_range_options(measurement_type)
+
+    def _update_range_options(self, measurement_type: str) -> None:
+        """
+        Update range dropdown options based on the selected measurement type.
+
+        Args:
+            measurement_type: Measurement type string.
+        """
+        # Save current range value if it's still valid
+        current_range = self.range_combo.currentData()
+        
+        # Clear and repopulate range dropdown
+        self.range_combo.clear()
+        valid_ranges = self.VALID_RANGES.get(measurement_type, ["AUTO"])
+        for range_val in valid_ranges:
+            self.range_combo.addItem(range_val, range_val)
+        
+        # Try to restore previous range value if it's still valid
+        if current_range in valid_ranges:
+            index = self.range_combo.findData(current_range)
+            if index >= 0:
+                self.range_combo.setCurrentIndex(index)
+        else:
+            # Default to AUTO
+            index = self.range_combo.findData("AUTO")
+            if index >= 0:
+                self.range_combo.setCurrentIndex(index)
 
     def _update_unit_for_measurement_type(self, measurement_type: str) -> None:
         """
@@ -431,7 +538,12 @@ class ChannelIndicator(QWidget):
         Args:
             measurement_type: Measurement type string (e.g., "VOLT:DC").
         """
-        unit = self.MEASUREMENT_TYPE_TO_UNIT.get(measurement_type, "V")
+        # Get unit based on current range
+        range_value = self.range_combo.currentData()
+        if range_value and range_value != "AUTO":
+            unit = self.RANGE_TO_UNIT.get(range_value, self.MEASUREMENT_TYPE_TO_UNIT.get(measurement_type, "V"))
+        else:
+            unit = self.MEASUREMENT_TYPE_TO_UNIT.get(measurement_type, "V")
         self.set_unit(unit)
 
     def _on_measurement_type_changed(self, index: int) -> None:
@@ -439,4 +551,17 @@ class ChannelIndicator(QWidget):
         measurement_type = self.measurement_combo.currentData()
         # Update unit label based on new measurement type
         self._update_unit_for_measurement_type(measurement_type)
+        # Update range dropdown options for this measurement type
+        self._update_range_options(measurement_type)
         self.measurement_type_changed.emit(self._channel_num, measurement_type)
+
+    def _on_range_changed(self, index: int) -> None:
+        """Handle range combo box change."""
+        range_value = self.range_combo.currentData()
+        measurement_type = self.measurement_combo.currentData()
+        
+        # Update unit label based on new range and measurement type
+        self._update_unit_for_measurement_type(measurement_type)
+        
+        # Emit signal for range change
+        self.range_changed.emit(self._channel_num, range_value)
