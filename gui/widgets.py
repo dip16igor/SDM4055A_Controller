@@ -129,6 +129,22 @@ class ChannelIndicator(QWidget):
 
     measurement_type_changed = Signal(int, str)  # Signal emitted when measurement type changes (channel_num, type)
 
+    # Mapping of measurement types to display units
+    MEASUREMENT_TYPE_TO_UNIT = {
+        "VOLT:DC": "V",
+        "VOLT:AC": "V",
+        "CURR:DC": "A",
+        "CURR:AC": "A",
+        "RES": "Ohm",
+        "FRES": "Ohm",
+        "CAP": "F",
+        "FREQ": "Hz",
+        "DIOD": "V",
+        "CONT": "Ohm",
+        "TEMP:RTD": "C",
+        "TEMP:THER": "C"
+    }
+
     def __init__(self, channel_num: int, parent=None):
         """
         Initialize channel indicator.
@@ -141,8 +157,13 @@ class ChannelIndicator(QWidget):
 
         self._channel_num = channel_num
         self._value = 0.0
-        self._unit = "V"
         self._is_current_channel = channel_num > 12
+        
+        # Set default unit based on channel type
+        if self._is_current_channel:
+            self._unit = "A"  # Current channels (13-16)
+        else:
+            self._unit = "V"  # Voltage/resistance channels (1-12)
         
         # Threshold configuration
         self._lower_threshold = None
@@ -400,8 +421,22 @@ class ChannelIndicator(QWidget):
         index = self.measurement_combo.findData(measurement_type)
         if index >= 0:
             self.measurement_combo.setCurrentIndex(index)
+            # Update unit label based on measurement type
+            self._update_unit_for_measurement_type(measurement_type)
+
+    def _update_unit_for_measurement_type(self, measurement_type: str) -> None:
+        """
+        Update the unit label based on the measurement type.
+
+        Args:
+            measurement_type: Measurement type string (e.g., "VOLT:DC").
+        """
+        unit = self.MEASUREMENT_TYPE_TO_UNIT.get(measurement_type, "V")
+        self.set_unit(unit)
 
     def _on_measurement_type_changed(self, index: int) -> None:
         """Handle measurement type combo box change."""
         measurement_type = self.measurement_combo.currentData()
+        # Update unit label based on new measurement type
+        self._update_unit_for_measurement_type(measurement_type)
         self.measurement_type_changed.emit(self._channel_num, measurement_type)

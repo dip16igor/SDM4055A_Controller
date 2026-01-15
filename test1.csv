@@ -33,7 +33,7 @@
 
 # Example configurations:
 channel,measurement_type,range,lower_threshold,upper_threshold
-1,VOLT:DC,AUTO,2.0,2.1
+1,VOLT:DC,200 mV,150,180
 2,VOLT:DC,AUTO,2.0,2.1
 3,VOLT:DC,AUTO,2.0,2.1
 4,VOLT:DC,AUTO,2.0,2.1

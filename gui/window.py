@@ -312,6 +312,11 @@ class MainWindow(QMainWindow):
             else:
                 # Channels 13-16: default to DC current
                 self._channel_measurement_types[i] = MeasurementType.CURRENT_DC.value
+        
+        # Update unit labels for all channel indicators based on default measurement types
+        for i, indicator in enumerate(self.channel_indicators, start=1):
+            measurement_type = self._channel_measurement_types[i]
+            indicator.set_measurement_type(measurement_type)
 
     @Slot(int, str)
     def _on_channel_measurement_type_changed(self, channel_num: int, measurement_type: str) -> None:
