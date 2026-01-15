@@ -266,6 +266,10 @@ class ChannelIndicator(QWidget):
         self.thresholds_label.setStyleSheet("color: #888;")
         layout.addWidget(self.thresholds_label)
 
+        # Measurement type and range selector in horizontal layout
+        controls_layout = QHBoxLayout()
+        controls_layout.setSpacing(8)
+        
         # Measurement type selector
         if self._is_current_channel:
             # Current channels (13-16): only AC/DC selection
@@ -273,7 +277,7 @@ class ChannelIndicator(QWidget):
             self.measurement_combo.addItem("DC Current", "CURR:DC")
             self.measurement_combo.addItem("AC Current", "CURR:AC")
             self.measurement_combo.currentIndexChanged.connect(self._on_measurement_type_changed)
-            layout.addWidget(self.measurement_combo)
+            controls_layout.addWidget(self.measurement_combo, stretch=1)
         else:
             # Voltage/resistance/capacitance channels (1-12): full selection
             self.measurement_combo = QComboBox()
@@ -288,13 +292,16 @@ class ChannelIndicator(QWidget):
             self.measurement_combo.addItem("RTD Temperature", "TEMP:RTD")
             self.measurement_combo.addItem("Thermocouple", "TEMP:THER")
             self.measurement_combo.currentIndexChanged.connect(self._on_measurement_type_changed)
-            layout.addWidget(self.measurement_combo)
+            controls_layout.addWidget(self.measurement_combo, stretch=1)
         
         # Range selector
         self.range_combo = QComboBox()
         self.range_combo.addItem("AUTO", "AUTO")
         self.range_combo.currentIndexChanged.connect(self._on_range_changed)
-        layout.addWidget(self.range_combo)
+        controls_layout.addWidget(self.range_combo, stretch=1)
+        
+        # Add controls layout to main layout
+        layout.addLayout(controls_layout)
 
         # Apply card style
         self._apply_card_style()
