@@ -174,6 +174,51 @@ The device communicates via USB using VISA protocol, which is an industry standa
   - Data file inclusion: `gui`, `hardware` directories
   - Standalone Windows executable output
 
+## Recent Changes (2026-01-14)
+
+### New Features
+1. **Channel Configuration File Loading**
+   - Added CSV-based configuration file support for channel settings
+   - Created `config/config_loader.py` module with full validation logic
+   - Added "Load Config" button to Scan Control section in main window
+   - Configuration file format includes:
+     - Channel number (1-16)
+     - Measurement type (VOLT:DC, VOLT:AC, RES, FRES, CAP, FREQ, DIOD, CONT, TEMP:RTD, TEMP:THER, CURR:DC, CURR:AC)
+     - Range (AUTO or specific value)
+     - Lower threshold (optional)
+     - Upper threshold (optional)
+   - Supports partial channel configuration (configure only channels you need)
+   - Supports comment lines in CSV files (lines starting with #)
+   - Displays loaded configuration file name in UI
+   - Comprehensive validation with detailed error messages:
+     - Channel number validation (1-16)
+     - Measurement type validation per channel (channels 1-12: voltage/resistance, channels 13-16: current)
+     - Threshold value validation (numeric, lower < upper)
+   - Created `sample_config.csv` with example configurations and documentation
+
+2. **Threshold-Based Color Coding and Display**
+   - Added threshold support to `ChannelIndicator` widget
+   - Implemented automatic color coding based on thresholds:
+     - GREEN: value within configured thresholds
+     - RED: value outside configured thresholds
+   - Added threshold display label showing configured thresholds:
+     - Shows lower threshold as "≥value"
+     - Shows upper threshold as "≤value"
+     - Displays both thresholds separated by " | "
+     - Hidden when no thresholds configured
+   - Increased measurement value font size from 28pt to 36pt for better readability
+   - Thresholds can be configured via CSV file or programmatically
+   - Supports lower-only, upper-only, or both thresholds
+   - Thresholds can be cleared to disable color coding
+   - Color updates automatically when measurement values are updated
+
+### Modified Files
+- **config/config_loader.py** (NEW): Configuration parser with validation
+- **config/__init__.py** (NEW): Package initialization
+- **gui/window.py**: Added config loading UI and logic
+- **gui/widgets.py**: Added threshold support to ChannelIndicator
+- **sample_config.csv** (NEW): Example configuration file
+
 ## Recent Changes (2026-01-13)
 
 ### Bug Fixes

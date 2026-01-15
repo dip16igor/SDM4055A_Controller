@@ -143,6 +143,11 @@ class ChannelIndicator(QWidget):
         self._value = 0.0
         self._unit = "V"
         self._is_current_channel = channel_num > 12
+        
+        # Threshold configuration
+        self._lower_threshold = None
+        self._upper_threshold = None
+        self._thresholds_enabled = False
 
         # Setup UI
         self._setup_ui()
@@ -166,7 +171,7 @@ class ChannelIndicator(QWidget):
         self.value_label = QLabel("0.0000")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         value_font = QFont()
-        value_font.setPointSize(28)
+        value_font.setPointSize(36)
         value_font.setBold(True)
         value_font.setFamily("Consolas, Courier New, monospace")
         self.value_label.setFont(value_font)
@@ -180,6 +185,16 @@ class ChannelIndicator(QWidget):
         unit_font.setBold(True)
         self.unit_label.setFont(unit_font)
         layout.addWidget(self.unit_label)
+        
+        # Thresholds label (displayed when thresholds are configured)
+        self.thresholds_label = QLabel("")
+        self.thresholds_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        thresholds_font = QFont()
+        thresholds_font.setPointSize(9)
+        thresholds_font.setItalic(True)
+        self.thresholds_label.setFont(thresholds_font)
+        self.thresholds_label.setStyleSheet("color: #888;")
+        layout.addWidget(self.thresholds_label)
 
         # Measurement type selector
         if self._is_current_channel:
@@ -247,7 +262,7 @@ class ChannelIndicator(QWidget):
 
     def set_value(self, value: float, unit: str = None) -> None:
         """
-        Update the displayed value.
+        Update the displayed value with threshold-based color coding.
 
         Args:
             value: New measurement value.
@@ -258,6 +273,10 @@ class ChannelIndicator(QWidget):
             self._unit = unit
             self.unit_label.setText(unit)
         self.value_label.setText(f"{value:.6f}")
+        
+        # Apply threshold-based color coding if enabled
+        if self._thresholds_enabled:
+            self._apply_threshold_color(value)
 
     def set_unit(self, unit: str) -> None:
         """
@@ -287,6 +306,76 @@ class ChannelIndicator(QWidget):
         """Reset the value label to normal display."""
         self.value_label.setText(f"{self._value:.6f}")
         self.value_label.setStyleSheet("")
+    
+    def set_thresholds(self, lower: Optional[float] = None, upper: Optional[float] = None) -> None:
+        """
+        Set threshold values for this channel.
+        
+        Args:
+            lower: Lower threshold value (None to disable).
+            upper: Upper threshold value (None to disable).
+        """
+        self._lower_threshold = lower
+        self._upper_threshold = upper
+        self._thresholds_enabled = (lower is not None) or (upper is not None)
+        
+        # Update thresholds display
+        self._update_thresholds_display()
+        
+        # Re-apply color coding if thresholds are enabled
+        if self._thresholds_enabled:
+            self._apply_threshold_color(self._value)
+    
+    def clear_thresholds(self) -> None:
+        """Clear threshold settings and reset color."""
+        self._lower_threshold = None
+        self._upper_threshold = None
+        self._thresholds_enabled = False
+        self.value_label.setStyleSheet("")
+        self._update_thresholds_display()
+    
+    def _update_thresholds_display(self) -> None:
+        """Update the thresholds label based on current threshold values."""
+        if not self._thresholds_enabled:
+            self.thresholds_label.setText("")
+            return
+        
+        # Build threshold display text
+        parts = []
+        if self._lower_threshold is not None:
+            parts.append(f">={self._lower_threshold:.6f}")
+        if self._upper_threshold is not None:
+            parts.append(f"<={self._upper_threshold:.6f}")
+        
+        if parts:
+            self.thresholds_label.setText(" | ".join(parts))
+        else:
+            self.thresholds_label.setText("")
+    
+    def _apply_threshold_color(self, value: float) -> None:
+        """
+        Apply color based on threshold comparison.
+        
+        Args:
+            value: The value to check against thresholds.
+        """
+        if not self._thresholds_enabled:
+            return
+        
+        # Check if value is within thresholds
+        in_range = True
+        
+        if self._lower_threshold is not None and value < self._lower_threshold:
+            in_range = False
+        
+        if self._upper_threshold is not None and value > self._upper_threshold:
+            in_range = False
+        
+        # Apply color
+        if in_range:
+            self.value_label.setStyleSheet("color: #51cf66;")  # Green
+        else:
+            self.value_label.setStyleSheet("color: #ff6b6b;")  # Red
 
     def get_value(self) -> float:
         """Get current displayed value."""

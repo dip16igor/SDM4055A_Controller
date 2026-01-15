@@ -20,12 +20,14 @@ from PySide6.QtWidgets import (
     QComboBox,
     QGroupBox,
     QGridLayout,
+    QFileDialog,
 )
 
 from hardware.visa_interface import VisaInterface, MeasurementType
 from hardware.async_worker import AsyncScanManager
 from hardware.simulator import VisaSimulator
 from gui.widgets import ChannelIndicator
+from config import ConfigLoader, ChannelThresholdConfig
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +64,9 @@ class MainWindow(QMainWindow):
 
         # Channel measurement type configurations (1-16)
         self._channel_measurement_types: Dict[int, str] = {}
+
+        # Configuration loader
+        self.config_loader = ConfigLoader()
 
         # Setup UI
         self._setup_ui()
@@ -141,6 +146,16 @@ class MainWindow(QMainWindow):
         scan_layout.addWidget(self.btn_start_scan)
         scan_layout.addWidget(self.btn_stop_scan)
         scan_layout.addWidget(self.lbl_scan_status)
+        
+        # Configuration file section
+        scan_layout.addSpacing(20)
+        self.btn_load_config = QPushButton("Load Config")
+        self.btn_load_config.clicked.connect(self._on_load_config_clicked)
+        self.lbl_config_file = QLabel("No config loaded")
+        self.lbl_config_file.setStyleSheet("color: #888; font-style: italic;")
+        
+        scan_layout.addWidget(self.btn_load_config)
+        scan_layout.addWidget(self.lbl_config_file)
         scan_layout.addStretch()
 
         scan_group.setLayout(scan_layout)
@@ -562,3 +577,83 @@ class MainWindow(QMainWindow):
         else:
             self.device_info_label.setText("No device connected")
             self.device_info_label.setToolTip("")
+    
+    def _on_load_config_clicked(self) -> None:
+        """Handle load configuration button click."""
+        # Open file dialog
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Load Channel Configuration",
+            "",
+            "CSV Files (*.csv);;All Files (*)"
+        )
+        
+        if not file_path:
+            return  # User cancelled
+        
+        # Load configuration
+        self.status_updated.emit(f"Loading configuration from {file_path}...")
+        QApplication.processEvents()
+        
+        success, message = self.config_loader.load_from_file(file_path)
+        
+        if not success:
+            QMessageBox.critical(
+                self,
+                "Configuration Error",
+                f"Failed to load configuration:\n{message}"
+            )
+            self.status_updated.emit("Configuration load failed")
+            logger.error(f"Configuration load failed: {message}")
+            return
+        
+        # Apply configuration to channels
+        self._apply_configuration()
+        
+        # Update UI
+        config_name = self.config_loader.get_config_file_name()
+        self.lbl_config_file.setText(config_name)
+        self.lbl_config_file.setStyleSheet("color: #51cf66; font-weight: bold;")
+        
+        self.status_updated.emit(message)
+        logger.info(f"Configuration loaded successfully: {message}")
+        
+        QMessageBox.information(
+            self,
+            "Configuration Loaded",
+            f"{message}\n\nThresholds have been applied to configured channels.\n"
+            "Values within thresholds will display in GREEN.\n"
+            "Values outside thresholds will display in RED."
+        )
+    
+    def _apply_configuration(self) -> None:
+        """Apply loaded configuration to channel indicators."""
+        configs = self.config_loader.get_all_configs()
+        
+        # Clear all thresholds first
+        for indicator in self.channel_indicators:
+            indicator.clear_thresholds()
+        
+        # Apply configuration to each configured channel
+        for channel_num, config in configs.items():
+            if 1 <= channel_num <= 16:
+                indicator = self.channel_indicators[channel_num - 1]
+                
+                # Set measurement type
+                indicator.set_measurement_type(config.measurement_type)
+                
+                # Update internal measurement type mapping
+                self._channel_measurement_types[channel_num] = config.measurement_type
+                
+                # Set thresholds
+                indicator.set_thresholds(config.lower_threshold, config.upper_threshold)
+                
+                logger.info(
+                    f"Applied config to channel {channel_num}: "
+                    f"type={config.measurement_type}, "
+                    f"lower={config.lower_threshold}, "
+                    f"upper={config.upper_threshold}"
+                )
+        
+        configured_channels = self.config_loader.get_configured_channels()
+        logger.info(f"Applied configuration to {len(configured_channels)} channels: {configured_channels}")
