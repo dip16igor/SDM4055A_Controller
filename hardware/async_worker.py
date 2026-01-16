@@ -143,7 +143,7 @@ class AsyncScanManager(QObject):
         self._thread: Optional[QThread] = None
         self._worker: Optional[ScanWorker] = None
         self._scanning = False
-        self._channel_configs: Dict[int, str] = {}
+        self._channel_configs: Dict[int, Dict[str, str]] = {}  # Stores {'measurement_type': str, 'range_value': str}
 
     def start(self, interval_ms: int = 2000) -> bool:
         """
@@ -196,12 +196,12 @@ class AsyncScanManager(QObject):
             self._cleanup()
             return False
 
-    def configure_channels(self, channel_configs: Dict[int, str]) -> bool:
+    def configure_channels(self, channel_configs: Dict[int, Dict[str, str]]) -> bool:
         """
-        Configure device with measurement types for each channel.
+        Configure device with measurement types and ranges for each channel.
 
         Args:
-            channel_configs: Dictionary mapping channel numbers to measurement type strings.
+            channel_configs: Dictionary mapping channel numbers to config dicts with 'measurement_type' and 'range_value'.
 
         Returns:
             True if configuration successful, False otherwise.
@@ -214,8 +214,12 @@ class AsyncScanManager(QObject):
             # Store channel configurations
             self._channel_configs = channel_configs.copy()
 
-            # Configure each channel with its measurement type
-            for channel_num, measurement_type_str in channel_configs.items():
+            # Configure each channel with its measurement type and range
+            for channel_num, config in channel_configs.items():
+                # Get measurement type and range from config dict
+                measurement_type_str = config.get('measurement_type')
+                range_value = config.get('range_value', 'AUTO')
+                
                 # Convert string to MeasurementType enum
                 try:
                     measurement_type = MeasurementType(measurement_type_str)
@@ -229,9 +233,15 @@ class AsyncScanManager(QObject):
                     logger.error(
                         f"Failed to set measurement type for channel {channel_num}")
                     return False
+                
+                # Set channel range
+                if not self._device.set_channel_range(channel_num, range_value):
+                    logger.error(
+                        f"Failed to set range for channel {channel_num}")
+                    return False
 
                 logger.debug(
-                    f"Configured channel {channel_num} with {measurement_type.value}")
+                    f"Configured channel {channel_num} with {measurement_type.value}, range {range_value}")
 
             logger.info(
                 f"Successfully configured {len(channel_configs)} channels")

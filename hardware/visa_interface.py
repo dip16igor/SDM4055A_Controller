@@ -31,16 +31,18 @@ class MeasurementType(Enum):
 class ChannelConfig:
     """Configuration for a single channel."""
     
-    def __init__(self, channel_num: int, measurement_type: MeasurementType = MeasurementType.VOLTAGE_DC):
+    def __init__(self, channel_num: int, measurement_type: MeasurementType = MeasurementType.VOLTAGE_DC, range_value: str = "AUTO"):
         """
         Initialize channel configuration.
         
         Args:
             channel_num: Channel number (1-16).
             measurement_type: Measurement type for this channel.
+            range_value: Measurement range (e.g., "200 mV", "AUTO").
         """
         self.channel_num = channel_num
         self.measurement_type = measurement_type
+        self.range_value = range_value
 
 
 class VisaInterface:
@@ -181,6 +183,44 @@ class VisaInterface:
             logger.error(f"Unexpected error during function set: {e}")
             return False
 
+    # Mapping of range values to SCPI range commands
+    RANGE_TO_SCPI = {
+        # Voltage ranges
+        "200 mV": "200mV",
+        "2 V": "2V",
+        "20 V": "20V",
+        "200 V": "200V",
+        "1000 V": "1000V",
+        "750 V": "750V",
+        # Current ranges
+        "200 uA": "200uA",
+        "2 mA": "2mA",
+        "20 mA": "20mA",
+        "200 mA": "200mA",
+        "2 A": "2A",
+        "10 A": "10A",
+        # Capacitance ranges
+        "2 nF": "2nF",
+        "20 nF": "20nF",
+        "200 nF": "200nF",
+        "2 uF": "2uF",
+        "20 uF": "20uF",
+        "200 uF": "200uF",
+        "2 mF": "2mF",
+        "20 mF": "20mF",
+        "100 mF": "100mF",
+        # Resistance ranges
+        "200 Ohm": "200OHM",
+        "2 kOhm": "2kOHM",
+        "20 kOhm": "20kOHM",
+        "200 kOhm": "200kOHM",
+        "2 MOhm": "2MOHM",
+        "10 MOhm": "10MOHM",
+        "100 MOhm": "100MOHM",
+        # AUTO range
+        "AUTO": "AUTO",
+    }
+    
     def _initialize_channels(self) -> None:
         """Initialize default channel configurations for all 16 channels."""
         for i in range(1, 17):
@@ -190,7 +230,7 @@ class VisaInterface:
                 default_type = MeasurementType.VOLTAGE_DC
             else:
                 default_type = MeasurementType.CURRENT_DC
-            self._channel_configs[i] = ChannelConfig(i, default_type)
+            self._channel_configs[i] = ChannelConfig(i, default_type, "AUTO")
 
     def get_channel_config(self, channel_num: int) -> Optional[ChannelConfig]:
         """
@@ -233,6 +273,35 @@ class VisaInterface:
 
         self._channel_configs[channel_num].measurement_type = measurement_type
         logger.info(f"Set channel {channel_num} to {measurement_type.value}")
+        return True
+    
+    def set_channel_range(self, channel_num: int, range_value: str) -> bool:
+        """
+        Set measurement range for a specific channel.
+        
+        Args:
+            channel_num: Channel number (1-16).
+            range_value: Range value (e.g., "200 mV", "AUTO").
+        
+        Returns:
+            True if successful, False otherwise.
+        """
+        if channel_num < 1 or channel_num > 16:
+            logger.error(f"Invalid channel number: {channel_num}")
+            return False
+        
+        # Validate range value
+        valid_ranges = ["AUTO", "200 mV", "2 V", "20 V", "200 V", "1000 V", "750 V",
+                      "200 uA", "2 mA", "20 mA", "200 mA", "2 A", "10 A",
+                      "2 nF", "20 nF", "200 nF", "2 uF", "20 uF", "200 uF", "2 mF", "20 mF", "100 mF",
+                      "200 Ohm", "2 kOhm", "20 kOhm", "200 kOhm", "2 MOhm", "10 MOhm", "100 MOhm"]
+        
+        if range_value not in valid_ranges:
+            logger.error(f"Invalid range value: {range_value}")
+            return False
+        
+        self._channel_configs[channel_num].range_value = range_value
+        logger.info(f"Set channel {channel_num} range to {range_value}")
         return True
 
     def enable_scan_mode(self) -> bool:
@@ -314,13 +383,16 @@ class VisaInterface:
             
             channel_type = type_map.get(config.measurement_type, "DCV")
             
-            # Configure channel: ROUT:CHAN <ch>,ON,<type>,AUTO,FAST
-            cmd = f":ROUT:CHAN {channel_num},ON,{channel_type},AUTO,FAST"
+            # Get SCPI range command from range value
+            range_scpi = self.RANGE_TO_SCPI.get(config.range_value, "AUTO")
+            
+            # Configure channel: ROUT:CHAN <ch>,ON,<type>,<range>,FAST
+            cmd = f":ROUT:CHAN {channel_num},ON,{channel_type},{range_scpi},FAST"
             logger.info(f"Configuring channel {channel_num}: {cmd}")
             self.instrument.write(cmd)
             time.sleep(0.05)  # 50ms delay
             
-            logger.debug(f"Configured channel {channel_num} as {channel_type}")
+            logger.debug(f"Configured channel {channel_num} as {channel_type} with range {range_scpi}")
             return True
         except pyvisa.Error as e:
             logger.error(f"VISA channel configuration error: {e}")

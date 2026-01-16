@@ -64,6 +64,9 @@ class MainWindow(QMainWindow):
 
         # Channel measurement type configurations (1-16)
         self._channel_measurement_types: Dict[int, str] = {}
+        
+        # Channel range configurations (1-16)
+        self._channel_ranges: Dict[int, str] = {}
 
         # Configuration loader
         self.config_loader = ConfigLoader()
@@ -307,7 +310,7 @@ class MainWindow(QMainWindow):
         self._using_simulator = False
 
     def _initialize_channel_measurement_types(self) -> None:
-        """Initialize default measurement types for all channels."""
+        """Initialize default measurement types and ranges for all channels."""
         for i in range(1, 17):
             if i <= 12:
                 # Channels 1-12: default to DC voltage
@@ -315,11 +318,16 @@ class MainWindow(QMainWindow):
             else:
                 # Channels 13-16: default to DC current
                 self._channel_measurement_types[i] = MeasurementType.CURRENT_DC.value
+            
+            # Default all channels to AUTO range
+            self._channel_ranges[i] = "AUTO"
         
-        # Update unit labels for all channel indicators based on default measurement types
+        # Update unit labels and ranges for all channel indicators based on defaults
         for i, indicator in enumerate(self.channel_indicators, start=1):
             measurement_type = self._channel_measurement_types[i]
+            range_value = self._channel_ranges[i]
             indicator.set_measurement_type(measurement_type)
+            indicator.set_range(range_value)
 
     @Slot(int, str)
     def _on_channel_measurement_type_changed(self, channel_num: int, measurement_type: str) -> None:
@@ -333,14 +341,20 @@ class MainWindow(QMainWindow):
             f"Channel {channel_num} measurement type changed to {measurement_type}")
         self._channel_measurement_types[channel_num] = measurement_type
 
-    def get_all_channel_measurement_types(self) -> Dict[int, str]:
+    def get_all_channel_measurement_types(self) -> Dict[int, Dict[str, str]]:
         """
-        Get measurement types for all channels.
+        Get measurement types and ranges for all channels.
 
         Returns:
-            Dictionary mapping channel numbers to measurement type strings.
+            Dictionary mapping channel numbers to config dicts with 'measurement_type' and 'range_value'.
         """
-        return self._channel_measurement_types.copy()
+        channel_configs = {}
+        for i in range(1, 17):
+            channel_configs[i] = {
+                'measurement_type': self._channel_measurement_types[i],
+                'range_value': self._channel_ranges[i]
+            }
+        return channel_configs
 
     @Slot(bool)
     def _on_connection_changed(self, connected: bool) -> None:
@@ -373,11 +387,11 @@ class MainWindow(QMainWindow):
         # Create new scan manager
         self.scan_manager = AsyncScanManager(device_interface)
 
-        # Configure device with channel measurement types
+        # Configure device with channel measurement types and ranges
         channel_configs = self.get_all_channel_measurement_types()
         if not self.scan_manager.configure_channels(channel_configs):
             QMessageBox.warning(self, "Configuration Error",
-                                "Failed to configure channels with measurement types")
+                                "Failed to configure channels with measurement types and ranges")
             return
 
         # Connect signals
@@ -420,11 +434,11 @@ class MainWindow(QMainWindow):
         # Create temporary scan manager for single scan
         temp_scan_manager = AsyncScanManager(device_interface)
 
-        # Configure device with channel measurement types
+        # Configure device with channel measurement types and ranges
         channel_configs = self.get_all_channel_measurement_types()
         if not temp_scan_manager.configure_channels(channel_configs):
             QMessageBox.warning(self, "Configuration Error",
-                                "Failed to configure channels with measurement types")
+                                "Failed to configure channels with measurement types and ranges")
             return
 
         # Connect signals
@@ -656,6 +670,10 @@ class MainWindow(QMainWindow):
                 # Set range if specified
                 if config.range_value:
                     indicator.set_range(config.range_value)
+                    self._channel_ranges[channel_num] = config.range_value
+                else:
+                    # Default to AUTO if not specified
+                    self._channel_ranges[channel_num] = "AUTO"
                 
                 # Set thresholds
                 indicator.set_thresholds(config.lower_threshold, config.upper_threshold)
@@ -681,3 +699,4 @@ class MainWindow(QMainWindow):
         """
         logger.info(
             f"Channel {channel_num} range changed to {range_value}")
+        self._channel_ranges[channel_num] = range_value
