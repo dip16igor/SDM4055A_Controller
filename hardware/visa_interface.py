@@ -409,6 +409,22 @@ class VisaInterface:
             self.instrument.write(cmd)
             time.sleep(0.05)  # 50ms delay
             
+            # Check for errors after configuration
+            try:
+                # Query system error status to detect configuration errors
+                error_response = self.instrument.query(":SYST:ERR?")
+                error_response = error_response.strip()
+                if error_response and error_response != '0,"No error"':
+                    logger.error(f"Channel {channel_num} configuration error: {error_response}")
+                    # Log additional details
+                    try:
+                        error_query = self.instrument.query(":SYST:ERR?")
+                        logger.error(f"Error details: {error_query.strip()}")
+                    except:
+                        pass
+            except pyvisa.Error as e:
+                logger.warning(f"Could not query error status: {e}")
+            
             logger.debug(f"Configured channel {channel_num} as {channel_type} with range {range_scpi}")
             return True
         except pyvisa.Error as e:
@@ -430,7 +446,7 @@ class VisaInterface:
                 logger.error(f"Failed to configure channel {channel_num}")
                 return False
             # Add delay between channel configurations
-            time.sleep(0.1)  # 100ms delay between channels
+            time.sleep(1.0)  # 1 second delay between channels for device to settle
         return True
 
     def set_scan_limits(self, low: int = 1, high: int = 16) -> bool:
