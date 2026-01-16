@@ -381,21 +381,32 @@ class ChannelIndicator(QWidget):
 
     def set_value(self, value: float, unit: str = None) -> None:
         """
-        Update the displayed value with threshold-based color coding.
+        Update the displayed value with range-based conversion and threshold color coding.
 
         Args:
-            value: New measurement value.
+            value: New measurement value (from device).
             unit: Unit string to display (optional, uses current unit if not provided).
         """
         self._value = value
         if unit is not None:
             self._unit = unit
             self.unit_label.setText(unit)
-        self.value_label.setText(f"{value:.6f}")
+        
+        # Apply range-based value conversion
+        range_value = self.range_combo.currentData()
+        if range_value and range_value != "AUTO":
+            conversion_factor = self.RANGE_TO_CONVERSION.get(range_value, 1)
+            converted_value = value * conversion_factor
+            self.value_label.setText(f"{converted_value:.6f}")
+        else:
+            self.value_label.setText(f"{value:.6f}")
         
         # Apply threshold-based color coding if enabled
         if self._thresholds_enabled:
-            self._apply_threshold_color(value)
+            if range_value and range_value != "AUTO":
+                self._apply_threshold_color(converted_value, use_converted=True)
+            else:
+                self._apply_threshold_color(value, use_converted=False)
 
     def set_unit(self, unit: str) -> None:
         """
@@ -471,12 +482,13 @@ class ChannelIndicator(QWidget):
         else:
             self.thresholds_label.setText("")
     
-    def _apply_threshold_color(self, value: float) -> None:
+    def _apply_threshold_color(self, value: float = None, use_converted: bool = False) -> None:
         """
         Apply color based on threshold comparison.
         
         Args:
-            value: The value to check against thresholds.
+            value: The value to check against thresholds (original or converted).
+            use_converted: If True, use converted value for comparison.
         """
         if not self._thresholds_enabled:
             return
