@@ -182,6 +182,42 @@ class ChannelIndicator(QWidget):
         "100 MOhm": "MOhm",
     }
 
+    # Mapping of ranges to value conversion factors (device returns values in base units)
+    RANGE_TO_CONVERSION = {
+        # Voltage ranges (device returns V)
+        "200 mV": 1000,  # Convert V to mV (multiply by 1000)
+        "2 V": 1,        # No conversion (V to V)
+        "20 V": 1,       # No conversion (V to V)
+        "200 V": 1,      # No conversion (V to V)
+        "1000 V": 1,     # No conversion (V to V)
+        "750 V": 1,       # No conversion (V to V)
+        # Current ranges (device returns A)
+        "200 uA": 1e6,   # Convert A to uA (multiply by 1,000,000)
+        "2 mA": 1000,     # Convert A to mA (multiply by 1000)
+        "20 mA": 1000,    # Convert A to mA (multiply by 1000)
+        "200 mA": 1000,   # Convert A to mA (multiply by 1000)
+        "2 A": 1,         # No conversion (A to A)
+        "10 A": 1,        # No conversion (A to A)
+        # Capacitance ranges (device returns F)
+        "2 nF": 1e9,     # Convert F to nF (multiply by 1,000,000,000)
+        "20 nF": 1e9,    # Convert F to nF (multiply by 1,000,000,000)
+        "200 nF": 1e9,   # Convert F to nF (multiply by 1,000,000,000)
+        "2 uF": 1e6,     # Convert F to uF (multiply by 1,000,000)
+        "20 uF": 1e6,    # Convert F to uF (multiply by 1,000,000)
+        "200 uF": 1e6,   # Convert F to uF (multiply by 1,000,000)
+        "2 mF": 1e3,     # Convert F to mF (multiply by 1,000)
+        "20 mF": 1e3,    # Convert F to mF (multiply by 1,000)
+        "100 mF": 1e3,   # Convert F to mF (multiply by 1,000)
+        # Resistance ranges (device returns Ohm)
+        "200 Ohm": 1,     # No conversion (Ohm to Ohm)
+        "2 kOhm": 1e-3,  # Convert Ohm to kOhm (multiply by 0.001)
+        "20 kOhm": 1e-3, # Convert Ohm to kOhm (multiply by 0.001)
+        "200 kOhm": 1e-3, # Convert Ohm to kOhm (multiply by 0.001)
+        "2 MOhm": 1e-6,  # Convert Ohm to MOhm (multiply by 0.000001)
+        "10 MOhm": 1e-6,  # Convert Ohm to MOhm (multiply by 0.000001)
+        "100 MOhm": 1e-6, # Convert Ohm to MOhm (multiply by 0.000001)
+    }
+
     # Valid ranges for each measurement type
     VALID_RANGES = {
         "VOLT:DC": ["200 mV", "2 V", "20 V", "200 V", "1000 V", "AUTO"],
