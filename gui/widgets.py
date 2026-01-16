@@ -146,32 +146,23 @@ class ChannelIndicator(QWidget):
         "TEMP:THER": "C"
     }
 
-    # Mapping of ranges to display units for each measurement type
+    # Mapping of ranges to display units for each measurement type (CS1016 supported ranges only)
     RANGE_TO_UNIT = {
-        # Voltage ranges
+        # Voltage ranges (CS1016 only supports up to 200V)
         "200 mV": "mV",
         "2 V": "V",
         "20 V": "V",
         "200 V": "V",
-        "1000 V": "V",
-        "750 V": "V",
-        # Current ranges
-        "200 uA": "uA",
-        "2 mA": "mA",
-        "20 mA": "mA",
-        "200 mA": "mA",
+        # Current ranges (CS1016 only supports 2A)
         "2 A": "A",
-        "10 A": "A",
-        # Capacitance ranges
+        # Capacitance ranges (CS1016 supports 10000 uF instead of 10 mF)
         "2 nF": "nF",
         "20 nF": "nF",
         "200 nF": "nF",
         "2 uF": "uF",
         "20 uF": "uF",
         "200 uF": "uF",
-        "2 mF": "mF",
-        "20 mF": "mF",
-        "100 mF": "mF",
+        "10000 uF": "uF",
         # Resistance ranges
         "200 Ohm": "Ohm",
         "2 kOhm": "kOhm",
@@ -183,31 +174,23 @@ class ChannelIndicator(QWidget):
     }
 
     # Mapping of ranges to value conversion factors (device returns values in base units)
+    # CS1016 supported ranges only
     RANGE_TO_CONVERSION = {
         # Voltage ranges (device returns V)
         "200 mV": 1000,  # Convert V to mV (multiply by 1000)
         "2 V": 1,        # No conversion (V to V)
         "20 V": 1,       # No conversion (V to V)
         "200 V": 1,      # No conversion (V to V)
-        "1000 V": 1,     # No conversion (V to V)
-        "750 V": 1,       # No conversion (V to V)
-        # Current ranges (device returns A)
-        "200 uA": 1e6,   # Convert A to uA (multiply by 1,000,000)
-        "2 mA": 1000,     # Convert A to mA (multiply by 1000)
-        "20 mA": 1000,    # Convert A to mA (multiply by 1000)
-        "200 mA": 1000,   # Convert A to mA (multiply by 1000)
+        # Current ranges (device returns A) - CS1016 only supports 2A
         "2 A": 1,         # No conversion (A to A)
-        "10 A": 1,        # No conversion (A to A)
-        # Capacitance ranges (device returns F)
+        # Capacitance ranges (device returns F) - CS1016 supports 10000 uF instead of 10 mF
         "2 nF": 1e9,     # Convert F to nF (multiply by 1,000,000,000)
         "20 nF": 1e9,    # Convert F to nF (multiply by 1,000,000,000)
         "200 nF": 1e9,   # Convert F to nF (multiply by 1,000,000,000)
         "2 uF": 1e6,     # Convert F to uF (multiply by 1,000,000)
         "20 uF": 1e6,    # Convert F to uF (multiply by 1,000,000)
         "200 uF": 1e6,   # Convert F to uF (multiply by 1,000,000)
-        "2 mF": 1e3,     # Convert F to mF (multiply by 1,000)
-        "20 mF": 1e3,    # Convert F to mF (multiply by 1,000)
-        "100 mF": 1e3,   # Convert F to mF (multiply by 1,000)
+        "10000 uF": 1e6,  # Convert F to uF (multiply by 1,000,000)
         # Resistance ranges (device returns Ohm)
         "200 Ohm": 1,     # No conversion (Ohm to Ohm)
         "2 kOhm": 1e-3,  # Convert Ohm to kOhm (multiply by 0.001)
@@ -218,15 +201,22 @@ class ChannelIndicator(QWidget):
         "100 MOhm": 1e-6, # Convert Ohm to MOhm (multiply by 0.000001)
     }
 
-    # Valid ranges for each measurement type
+    # Valid ranges for each measurement type (CS1016 scanning card limitations)
+    # IMPORTANT: CS1016 scanning card has DIFFERENT range limitations than the multimeter itself!
+    # See doc/CS1016_Supported_Ranges.md for detailed information
     VALID_RANGES = {
-        "VOLT:DC": ["200 mV", "2 V", "20 V", "200 V", "1000 V", "AUTO"],
-        "VOLT:AC": ["200 mV", "2 V", "20 V", "200 V", "750 V", "AUTO"],
-        "CURR:DC": ["200 uA", "2 mA", "20 mA", "200 mA", "2 A", "10 A", "AUTO"],
-        "CURR:AC": ["20 mA", "200 mA", "2 A", "10 A", "AUTO"],
+        # Voltage ranges - CS1016 only supports up to 200V (1000V and 750V are NOT supported)
+        "VOLT:DC": ["200 mV", "2 V", "20 V", "200 V", "AUTO"],
+        "VOLT:AC": ["200 mV", "2 V", "20 V", "200 V", "AUTO"],
+        # Current ranges - CS1016 ONLY supports 2A range (all other ranges are NOT supported)
+        "CURR:DC": ["2 A"],  # Only 2A is supported by CS1016
+        "CURR:AC": ["2 A"],  # Only 2A is supported by CS1016
+        # Resistance ranges - All ranges supported
         "RES": ["200 Ohm", "2 kOhm", "20 kOhm", "200 kOhm", "2 MOhm", "10 MOhm", "100 MOhm", "AUTO"],
         "FRES": ["200 Ohm", "2 kOhm", "20 kOhm", "200 kOhm", "2 MOhm", "10 MOhm", "100 MOhm", "AUTO"],
-        "CAP": ["2 nF", "20 nF", "200 nF", "2 uF", "20 uF", "200 uF", "2 mF", "20 mF", "100 mF", "AUTO"],
+        # Capacitance ranges - 2mF, 20mF, 100mF are NOT supported on SDM4055A (only SDM3065X)
+        # Use 10000 uF as alternative to 10 mF
+        "CAP": ["2 nF", "20 nF", "200 nF", "2 uF", "20 uF", "200 uF", "10000 uF", "AUTO"],
     }
 
     def __init__(self, channel_num: int, parent=None):

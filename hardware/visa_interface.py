@@ -183,32 +183,25 @@ class VisaInterface:
             logger.error(f"Unexpected error during function set: {e}")
             return False
 
-    # Mapping of range values to SCPI range commands
+    # Mapping of range values to SCPI range commands (CS1016 supported ranges only)
+    # IMPORTANT: CS1016 scanning card has DIFFERENT range limitations than the multimeter itself!
+    # See doc/CS1016_Supported_Ranges.md for detailed information
     RANGE_TO_SCPI = {
-        # Voltage ranges
+        # Voltage ranges - CS1016 only supports up to 200V (1000V and 750V are NOT supported)
         "200 mV": "200mV",
         "2 V": "2V",
         "20 V": "20V",
         "200 V": "200V",
-        "1000 V": "1000V",
-        "750 V": "750V",
-        # Current ranges
-        "200 uA": "200uA",
-        "2 mA": "2mA",
-        "20 mA": "20mA",
-        "200 mA": "200mA",
+        # Current ranges - CS1016 ONLY supports 2A range (all other ranges are NOT supported)
         "2 A": "2A",
-        "10 A": "10A",
-        # Capacitance ranges
+        # Capacitance ranges - 10000 uF is supported instead of 10 mF
         "2 nF": "2nF",
         "20 nF": "20nF",
         "200 nF": "200nF",
         "2 uF": "2uF",
         "20 uF": "20uF",
         "200 uF": "200uF",
-        "2 mF": "2mF",
-        "20 mF": "20mF",
-        "100 mF": "100mF",
+        "10000 uF": "10000uF",
         # Resistance ranges
         "200 Ohm": "200OHM",
         "2 kOhm": "2kOHM",
@@ -278,28 +271,52 @@ class VisaInterface:
     def set_channel_range(self, channel_num: int, range_value: str) -> bool:
         """
         Set measurement range for a specific channel.
-        
+
         Args:
             channel_num: Channel number (1-16).
             range_value: Range value (e.g., "200 mV", "AUTO").
-        
+
         Returns:
             True if successful, False otherwise.
         """
         if channel_num < 1 or channel_num > 16:
             logger.error(f"Invalid channel number: {channel_num}")
             return False
-        
-        # Validate range value
-        valid_ranges = ["AUTO", "200 mV", "2 V", "20 V", "200 V", "1000 V", "750 V",
-                      "200 uA", "2 mA", "20 mA", "200 mA", "2 A", "10 A",
-                      "2 nF", "20 nF", "200 nF", "2 uF", "20 uF", "200 uF", "2 mF", "20 mF", "100 mF",
-                      "200 Ohm", "2 kOhm", "20 kOhm", "200 kOhm", "2 MOhm", "10 MOhm", "100 MOhm"]
-        
-        if range_value not in valid_ranges:
-            logger.error(f"Invalid range value: {range_value}")
+
+        # Validate range value based on CS1016 scanning card limitations
+        # IMPORTANT: CS1016 has different range limitations than the multimeter itself!
+        # See doc/CS1016_Supported_Ranges.md for detailed information
+
+        # Get the channel's measurement type to validate range compatibility
+        config = self._channel_configs.get(channel_num)
+        if not config:
+            logger.error(f"No configuration for channel {channel_num}")
             return False
-        
+
+        # Define valid ranges for each measurement type (CS1016 supported ranges only)
+        valid_ranges_by_type = {
+            MeasurementType.VOLTAGE_DC: ["200 mV", "2 V", "20 V", "200 V", "AUTO"],
+            MeasurementType.VOLTAGE_AC: ["200 mV", "2 V", "20 V", "200 V", "AUTO"],
+            MeasurementType.CURRENT_DC: ["2 A"],  # CS1016 only supports 2A for current
+            MeasurementType.CURRENT_AC: ["2 A"],  # CS1016 only supports 2A for current
+            MeasurementType.RESISTANCE_2WIRE: ["200 Ohm", "2 kOhm", "20 kOhm", "200 kOhm", "2 MOhm", "10 MOhm", "100 MOhm", "AUTO"],
+            MeasurementType.RESISTANCE_4WIRE: ["200 Ohm", "2 kOhm", "20 kOhm", "200 kOhm", "2 MOhm", "10 MOhm", "100 MOhm", "AUTO"],
+            MeasurementType.CAPACITANCE: ["2 nF", "20 nF", "200 nF", "2 uF", "20 uF", "200 uF", "10000 uF", "AUTO"],
+            MeasurementType.FREQUENCY: ["AUTO"],
+            MeasurementType.DIODE: ["AUTO"],
+            MeasurementType.CONTINUITY: ["AUTO"],
+            MeasurementType.TEMP_RTD: ["AUTO"],
+            MeasurementType.TEMP_THERMOCOUPLE: ["AUTO"],
+        }
+
+        valid_ranges = valid_ranges_by_type.get(config.measurement_type, ["AUTO"])
+
+        if range_value not in valid_ranges:
+            logger.error(f"Invalid range value '{range_value}' for channel {channel_num} with measurement type {config.measurement_type.value}")
+            logger.error(f"Valid ranges for {config.measurement_type.value} are: {', '.join(valid_ranges)}")
+            logger.error("See doc/CS1016_Supported_Ranges.md for detailed information about CS1016 limitations")
+            return False
+
         self._channel_configs[channel_num].range_value = range_value
         logger.info(f"Set channel {channel_num} range to {range_value}")
         return True

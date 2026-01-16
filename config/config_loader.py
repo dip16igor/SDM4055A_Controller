@@ -62,15 +62,22 @@ class ConfigLoader:
         "TEMP:RTD", "TEMP:THER"
     }
     
-    # Valid ranges for each measurement type
+    # Valid ranges for each measurement type (CS1016 scanning card limitations)
+    # IMPORTANT: CS1016 scanning card has DIFFERENT range limitations than multimeter itself!
+    # See doc/CS1016_Supported_Ranges.md for detailed information
     VALID_RANGES = {
-        "VOLT:DC": ["200 mV", "2 V", "20 V", "200 V", "1000 V", "AUTO"],
-        "VOLT:AC": ["200 mV", "2 V", "20 V", "200 V", "750 V", "AUTO"],
-        "CURR:DC": ["200 uA", "2 mA", "20 mA", "200 mA", "2 A", "10 A", "AUTO"],
-        "CURR:AC": ["20 mA", "200 mA", "2 A", "10 A", "AUTO"],
+        # Voltage ranges - CS1016 only supports up to 200V (1000V and 750V are NOT supported)
+        "VOLT:DC": ["200 mV", "2 V", "20 V", "200 V", "AUTO"],
+        "VOLT:AC": ["200 mV", "2 V", "20 V", "200 V", "AUTO"],
+        # Current ranges - CS1016 ONLY supports 2A range (all other ranges are NOT supported)
+        "CURR:DC": ["2 A"],  # Only 2A is supported by CS1016
+        "CURR:AC": ["2 A"],  # Only 2A is supported by CS1016
+        # Resistance ranges - All ranges supported
         "RES": ["200 Ohm", "2 kOhm", "20 kOhm", "200 kOhm", "2 MOhm", "10 MOhm", "100 MOhm", "AUTO"],
         "FRES": ["200 Ohm", "2 kOhm", "20 kOhm", "200 kOhm", "2 MOhm", "10 MOhm", "100 MOhm", "AUTO"],
-        "CAP": ["2 nF", "20 nF", "200 nF", "2 uF", "20 uF", "200 uF", "2 mF", "20 mF", "100 mF", "AUTO"],
+        # Capacitance ranges - 2mF, 20mF, 100mF are NOT supported on SDM4055A (only SDM3065X)
+        # Use 10000 uF as alternative to 10 mF
+        "CAP": ["2 nF", "20 nF", "200 nF", "2 uF", "20 uF", "200 uF", "10000 uF", "AUTO"],
     }
     
     # User-friendly names for measurement types (for validation messages)
@@ -319,7 +326,9 @@ class ConfigLoader:
 #
 # Notes:
 #   - Channels 1-12: Voltage, Resistance, Capacitance, etc.
-#   - Channels 13-16: Current measurements only
+#   - Channels 13-16: Current measurements only (2A range ONLY)
+#   - CS1016 scanning card has DIFFERENT range limitations than multimeter itself!
+#   - See doc/CS1016_Supported_Ranges.md for detailed information
 #   - Thresholds are optional - leave empty if not needed
 #   - Values within thresholds display in GREEN
 #   - Values outside thresholds display in RED
@@ -328,12 +337,12 @@ class ConfigLoader:
 # Example configurations:
 channel,measurement_type,range,lower_threshold,upper_threshold
 1,VOLT:DC,AUTO,0,5
-2,VOLT:DC,AUTO,-10,10
+2,VOLT:DC,200 mV,0,0.2
 3,VOLT:AC,AUTO,0,120
 4,RES,AUTO,0,1000
 5,CAP,AUTO,1e-6,100e-6
-13,CURR:DC,1A,0,0.5
-14,CURR:DC,100mA,0,50e-3
+13,CURR:DC,2 A,0,0.5
+14,CURR:DC,2 A,0,1.5
 """
             
             with open(file_path, 'w', encoding='utf-8') as f:
