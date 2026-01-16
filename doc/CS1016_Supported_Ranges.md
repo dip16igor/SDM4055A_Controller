@@ -46,6 +46,7 @@ The CS1016 scanning card does NOT support all ranges that the multimeter support
 **Critical Limitation:**
 - The CS1016 scanning card **ONLY supports the 2 A range** for current measurements
 - All other current ranges (200 uA, 2 mA, 20 mA, 200 mA, 10 A, AUTO) are **NOT supported**
+- **Current measurements MUST use SLOW speed** (FAST speed is not supported for current)
 - Maximum continuous current: **2.2 A** (per safety specifications)
 
 ### Resistance (2W/4W)
@@ -158,9 +159,9 @@ When configuring channels for scanning, use the following format:
 
 Where:
 - `<ch>`: Channel number (1-16)
-- `<type>`: Measurement type (DCV, ACV, DCA, ACA, RES, CAP, FREQ, DIOD, CONT, RTD, THER)
+- `<type>`: Measurement type (DCV, ACV, DCI, ACI, RES, CAP, FREQ, DIOD, CONT, RTD, THER)
 - `<range>`: Range value from the supported ranges above
-- `<speed>`: Measurement speed (FAST or SLOW)
+- `<speed>`: Measurement speed (FAST or SLOW - current measurements MUST use SLOW)
 
 ### Examples
 
@@ -170,7 +171,8 @@ Where:
 :ROUT:CHAN 1,ON,DCV,2V,FAST
 :ROUT:CHAN 1,ON,DCV,20V,FAST
 :ROUT:CHAN 1,ON,DCV,200V,FAST
-:ROUT:CHAN 13,ON,DCA,2A,FAST
+:ROUT:CHAN 13,ON,DCI,2A,SLOW      # DC Current MUST use SLOW speed
+:ROUT:CHAN 14,ON,ACI,2A,SLOW      # AC Current MUST use SLOW speed
 ```
 
 **Incorrect usage (unsupported ranges - will cause SCPI Error):**
@@ -197,6 +199,7 @@ Where:
 | 750 V range error | CS1016 does not support 750 V | Use 200 V max or AUTO |
 | 200 mV range error | Should work - check command format | Verify SCPI command format: `200mV` (not `200 mV`) |
 | Current range errors (except 2A) | CS1016 only supports 2A range | Use 2A range for current measurements |
+| Current measurement errors | Current MUST use SLOW speed | Use SLOW speed for current measurements (DCA/ACA) |
 | 2 mF, 20 mF, 100 mF errors | Not supported on SDM4055A | Use 10000 uF or AUTO instead |
 
 ## Comparison: Multimeter vs CS1016 Scanning Card
@@ -231,6 +234,7 @@ Where:
 
 2. **For Current Measurements:**
    - CS1016 only supports 2A range
+   - **Current measurements MUST use SLOW speed** (not FAST)
    - For other current ranges, use the multimeter in standalone mode
 
 3. **For High-Precision Measurements:**

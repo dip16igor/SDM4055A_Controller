@@ -386,8 +386,8 @@ class VisaInterface:
             type_map = {
                 MeasurementType.VOLTAGE_DC: "DCV",
                 MeasurementType.VOLTAGE_AC: "ACV",
-                MeasurementType.CURRENT_DC: "DCA",
-                MeasurementType.CURRENT_AC: "ACA",
+                MeasurementType.CURRENT_DC: "DCI",  # DCI (not DCA) for DC current
+                MeasurementType.CURRENT_AC: "ACI",  # ACI (not ACA) for AC current
                 MeasurementType.RESISTANCE_2WIRE: "RES",
                 MeasurementType.RESISTANCE_4WIRE: "RES",
                 MeasurementType.CAPACITANCE: "CAP",
@@ -403,8 +403,15 @@ class VisaInterface:
             # Get SCPI range command from range value
             range_scpi = self.RANGE_TO_SCPI.get(config.range_value, "AUTO")
             
-            # Configure channel: ROUT:CHAN <ch>,ON,<type>,<range>,FAST
-            cmd = f":ROUT:CHAN {channel_num},ON,{channel_type},{range_scpi},FAST"
+            # Determine speed based on measurement type
+            # Current measurements (DCI, ACI) must use SLOW speed
+            if channel_type in ["DCI", "ACI"]:
+                speed = "SLOW"
+            else:
+                speed = "FAST"
+            
+            # Configure channel: ROUT:CHAN <ch>,ON,<type>,<range>,<speed>
+            cmd = f":ROUT:CHAN {channel_num},ON,{channel_type},{range_scpi},{speed}"
             logger.info(f"Configuring channel {channel_num}: {cmd}")
             self.instrument.write(cmd)
             time.sleep(0.05)  # 50ms delay
