@@ -267,10 +267,18 @@ class ChannelIndicator(QWidget):
         self.value_label = QLabel("0.0000 V")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         value_font = QFont()
-        value_font.setPointSize(48)
+        value_font.setPointSize(60)
         value_font.setBold(True)
         value_font.setFamily("Consolas, Courier New, monospace")
         self.value_label.setFont(value_font)
+        # Apply font via stylesheet to override theme defaults
+        self.value_label.setStyleSheet("""
+            QLabel {
+                font-size: 60pt;
+                font-weight: bold;
+                font-family: 'Consolas', 'Courier New', monospace;
+            }
+        """)
         layout.addWidget(self.value_label)
         
         # Thresholds label (displayed when thresholds are configured)
@@ -412,14 +420,28 @@ class ChannelIndicator(QWidget):
         """
         self.value_label.setText(status)
         if error:
-            self.value_label.setStyleSheet("color: #ff6b6b;")
+            self.value_label.setStyleSheet("""
+                color: #ff6b6b;
+                font-size: 60pt;
+                font-weight: bold;
+                font-family: 'Consolas', 'Courier New', monospace;
+            """)
         else:
-            self.value_label.setStyleSheet("color: #51cf66;")
+            self.value_label.setStyleSheet("""
+                color: #51cf66;
+                font-size: 60pt;
+                font-weight: bold;
+                font-family: 'Consolas', 'Courier New', monospace;
+            """)
 
     def reset_status(self) -> None:
         """Reset the value label to normal display."""
         self.value_label.setText(f"{self._value:.6f} {self._unit}")
-        self.value_label.setStyleSheet("")
+        self.value_label.setStyleSheet("""
+            font-size: 60pt;
+            font-weight: bold;
+            font-family: 'Consolas', 'Courier New', monospace;
+        """)
     
     def set_thresholds(self, lower: Optional[float] = None, upper: Optional[float] = None) -> None:
         """
@@ -486,11 +508,21 @@ class ChannelIndicator(QWidget):
         if self._upper_threshold is not None and value > self._upper_threshold:
             in_range = False
         
-        # Apply color
+        # Apply color while preserving font style
         if in_range:
-            self.value_label.setStyleSheet("color: #51cf66;")  # Green
+            self.value_label.setStyleSheet("""
+                color: #51cf66;
+                font-size: 60pt;
+                font-weight: bold;
+                font-family: 'Consolas', 'Courier New', monospace;
+            """)  # Green
         else:
-            self.value_label.setStyleSheet("color: #ff6b6b;")  # Red
+            self.value_label.setStyleSheet("""
+                color: #ff6b6b;
+                font-size: 60pt;
+                font-weight: bold;
+                font-family: 'Consolas', 'Courier New', monospace;
+            """)  # Red
 
     def get_value(self) -> float:
         """Get current displayed value."""
