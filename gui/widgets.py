@@ -263,24 +263,15 @@ class ChannelIndicator(QWidget):
         self.channel_label.setFont(channel_font)
         layout.addWidget(self.channel_label)
 
-        # Value label (large, readable)
-        self.value_label = QLabel("0.0000")
+        # Value label (large, readable with inline unit)
+        self.value_label = QLabel("0.0000 V")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         value_font = QFont()
-        value_font.setPointSize(36)
+        value_font.setPointSize(48)
         value_font.setBold(True)
         value_font.setFamily("Consolas, Courier New, monospace")
         self.value_label.setFont(value_font)
         layout.addWidget(self.value_label)
-
-        # Unit label
-        self.unit_label = QLabel(self._unit)
-        self.unit_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        unit_font = QFont()
-        unit_font.setPointSize(12)
-        unit_font.setBold(True)
-        self.unit_label.setFont(unit_font)
-        layout.addWidget(self.unit_label)
         
         # Thresholds label (displayed when thresholds are configured)
         self.thresholds_label = QLabel("")
@@ -380,7 +371,6 @@ class ChannelIndicator(QWidget):
         self._value = value
         if unit is not None:
             self._unit = unit
-            self.unit_label.setText(unit)
         
         # Apply range-based value conversion
         range_value = self.range_combo.currentData()
@@ -388,11 +378,11 @@ class ChannelIndicator(QWidget):
             # For fixed ranges, apply conversion factor
             conversion_factor = self.RANGE_TO_CONVERSION.get(range_value, 1)
             converted_value = value * conversion_factor
-            self.value_label.setText(f"{converted_value:.6f}")
+            self.value_label.setText(f"{converted_value:.6f} {self._unit}")
         else:
             # For AUTO range, use the unit from the device response
             # The device returns the value in the unit it selected (e.g., mV, V, etc.)
-            self.value_label.setText(f"{value:.6f}")
+            self.value_label.setText(f"{value:.6f} {self._unit}")
         
         # Apply threshold-based color coding if enabled
         if self._thresholds_enabled:
@@ -403,13 +393,14 @@ class ChannelIndicator(QWidget):
 
     def set_unit(self, unit: str) -> None:
         """
-        Update the unit label.
+        Update the unit and refresh the value display.
 
         Args:
             unit: Unit string to display.
         """
         self._unit = unit
-        self.unit_label.setText(unit)
+        # Refresh value display with new unit
+        self.set_value(self._value)
 
     def set_status(self, status: str, error: bool = False) -> None:
         """
@@ -427,7 +418,7 @@ class ChannelIndicator(QWidget):
 
     def reset_status(self) -> None:
         """Reset the value label to normal display."""
-        self.value_label.setText(f"{self._value:.6f}")
+        self.value_label.setText(f"{self._value:.6f} {self._unit}")
         self.value_label.setStyleSheet("")
     
     def set_thresholds(self, lower: Optional[float] = None, upper: Optional[float] = None) -> None:
