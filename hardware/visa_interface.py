@@ -566,6 +566,7 @@ class VisaInterface:
 
         Returns:
             ScanDataResult with value, unit, and full_unit, or None if read failed.
+            If the measurement is overloaded, returns ScanDataResult with is_overload=True.
         """
         if not self._connected or not self.instrument:
             logger.warning("Attempted to get scan data while not connected")
@@ -579,9 +580,28 @@ class VisaInterface:
             # Query scan data for channel
             response = self.instrument.query(f":ROUT:DATA? {channel_num}")
             
+            logger.debug(f"Channel {channel_num} raw response: {response.strip()}")
+            
+            # Check if response contains overload indicator
+            # The multimeter may return "9.9e+37" or similar large value when overloaded
+            # or it may return a string like "overloadDC"
+            response_stripped = response.strip()
+            
+            # Check for overload conditions
+            if "overload" in response_stripped.lower():
+                # Extract the overload message (e.g., "overloadDC")
+                overload_msg = response_stripped
+                logger.warning(f"Channel {channel_num}: Overload detected - {overload_msg}")
+                return ScanDataResult(
+                    value=0.0,
+                    unit="OVERLOAD",
+                    full_unit=overload_msg,
+                    range_info="OVERLOAD"
+                )
+            
             # Parse the response - it may contain unit suffix (e.g., "-4.24124300E-04 VDC")
             # Extract only the numeric part before any space
-            parts = response.strip().split()
+            parts = response_stripped.split()
             
             if not parts:
                 logger.error(f"Channel {channel_num}: Empty response")
@@ -591,7 +611,52 @@ class VisaInterface:
             
             try:
                 value = float(value_str)
-                return value
+                
+                # Check if value is extremely large (indicates overload)
+                # The multimeter typically sends 9.9e+37 when overloaded
+                OVERLOAD_THRESHOLD = 1e35  # Threshold to detect overload
+                if abs(value) > OVERLOAD_THRESHOLD:
+                    logger.warning(f"Channel {channel_num}: Overload detected (value={value})")
+                    # Construct appropriate overload message based on measurement type
+                    # Try to get the full unit from the response if available
+                    if len(parts) > 1:
+                        # Extract the measurement type from the unit suffix (e.g., "VDC" -> "DC")
+                        unit_suffix = parts[1]
+                        # Create overload message by replacing the value part with "overload"
+                        overload_msg = f"overload{unit_suffix[1:]}" if len(unit_suffix) > 1 else "OVERLOAD"
+                    else:
+                        overload_msg = "OVERLOAD"
+                    return ScanDataResult(
+                        value=0.0,
+                        unit="OVERLOAD",
+                        full_unit=overload_msg,
+                        range_info="OVERLOAD"
+                    )
+                
+                # Extract unit information from the response
+                full_unit = parts[1] if len(parts) > 1 else ""
+                
+                # Map full unit to base unit
+                unit_mapping = {
+                    "VDC": "V", "VAC": "V",
+                    "ADC": "A", "AAC": "A",
+                    "OHM": "Ω", "OHMS": "Ω",
+                    "F": "F",
+                    "HZ": "Hz", "HERTZ": "Hz",
+                    "DEGC": "°C", "DEGF": "°F",
+                }
+                
+                base_unit = unit_mapping.get(full_unit, "")
+                
+                logger.debug(f"Channel {channel_num}: value={value}, full_unit={full_unit}, base_unit={base_unit}")
+                
+                return ScanDataResult(
+                    value=value,
+                    unit=base_unit,
+                    full_unit=full_unit,
+                    range_info=""
+                )
+                
             except ValueError as e:
                 logger.error(f"Channel {channel_num}: Failed to convert '{value_str}' to float: {e}")
                 return None
@@ -605,14 +670,15 @@ class VisaInterface:
             logger.error(f"Unexpected error during scan data retrieval on channel {channel_num}: {e}")
             return None
 
-    def read_all_channels(self) -> Dict[int, Optional[float]]:
+    def read_all_channels(self) -> Dict[int, Optional[ScanDataResult]]:
         """
         Read measurements from all 16 channels.
         
         First tries CS1016 scan mode, falls back to channel-by-channel reading if scan mode fails.
         
         Returns:
-            Dictionary mapping channel numbers to measurement values (or None if failed).
+            Dictionary mapping channel numbers to ScanDataResult objects (or None if failed).
+            Each ScanDataResult contains value, unit, full_unit, and range_info.
         """
         with QMutexLocker(self._mutex):
             if not self._connected or not self.instrument:
@@ -667,14 +733,14 @@ class VisaInterface:
                 logger.info("Falling back to sequential channel reading")
                 return self._read_channels_sequentially()
     
-    def _read_channels_sequentially(self) -> Dict[int, Optional[float]]:
+    def _read_channels_sequentially(self) -> Dict[int, Optional[ScanDataResult]]:
         """
         Read all channels sequentially (channel by channel) without scan mode.
         
         This is a fallback method for devices that don't support CS1016 scan mode.
         
         Returns:
-            Dictionary mapping channel numbers to measurement values (or None if failed).
+            Dictionary mapping channel numbers to ScanDataResult objects (or None if failed).
         """
         logger.info("Reading channels sequentially...")
         results = {}
@@ -687,7 +753,19 @@ class VisaInterface:
                 
                 # Read measurement
                 value = self.read_measurement()
-                results[channel_num] = value
+                
+                if value is not None:
+                    # Convert float to ScanDataResult
+                    # Note: Sequential reading doesn't provide unit information,
+                    # so we use empty strings for unit fields
+                    results[channel_num] = ScanDataResult(
+                        value=value,
+                        unit="",
+                        full_unit="",
+                        range_info=""
+                    )
+                else:
+                    results[channel_num] = None
                 
                 logger.debug(f"Channel {channel_num}: {value}")
                 

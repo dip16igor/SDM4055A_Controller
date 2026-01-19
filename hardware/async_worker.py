@@ -6,7 +6,7 @@ from PySide6.QtCore import QThread, Signal, QObject, QMutex, QMutexLocker
 from typing import Dict, Optional
 import logging
 
-from .visa_interface import MeasurementType
+from .visa_interface import MeasurementType, ScanDataResult
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class ScanWorker(QObject):
     # Emitted when a full scan completes with results (using object for thread safety)
     scan_complete = Signal(object)
     scan_error = Signal(str)  # Emitted when an error occurs
-    channel_read = Signal(int, float)  # Emitted when a single channel is read
+    channel_read = Signal(int, object)  # Emitted when a single channel is read (ScanDataResult or None)
     scan_started = Signal()  # Emitted when scanning starts
     scan_stopped = Signal()  # Emitted when scanning stops
 
@@ -127,7 +127,7 @@ class AsyncScanManager(QObject):
     # Signals for external connection
     scan_complete = Signal(object)
     scan_error = Signal(str)
-    channel_read = Signal(int, float)
+    channel_read = Signal(int, object)  # ScanDataResult or None
     scan_started = Signal()
     scan_stopped = Signal()
 

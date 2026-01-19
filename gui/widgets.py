@@ -385,10 +385,13 @@ class ChannelIndicator(QWidget):
         # Apply range-based value conversion
         range_value = self.range_combo.currentData()
         if range_value and range_value != "AUTO":
+            # For fixed ranges, apply conversion factor
             conversion_factor = self.RANGE_TO_CONVERSION.get(range_value, 1)
             converted_value = value * conversion_factor
             self.value_label.setText(f"{converted_value:.6f}")
         else:
+            # For AUTO range, use the unit from the device response
+            # The device returns the value in the unit it selected (e.g., mV, V, etc.)
             self.value_label.setText(f"{value:.6f}")
         
         # Apply threshold-based color coding if enabled

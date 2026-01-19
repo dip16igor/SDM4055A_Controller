@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
 )
 
-from hardware.visa_interface import VisaInterface, MeasurementType
+from hardware.visa_interface import VisaInterface, MeasurementType, ScanDataResult
 from hardware.async_worker import AsyncScanManager
 from hardware.simulator import VisaSimulator
 from gui.widgets import ChannelIndicator
@@ -462,15 +462,24 @@ class MainWindow(QMainWindow):
         """Handle scan complete signal.
 
         Args:
-            measurements: Dictionary mapping channel numbers to measured values
+            measurements: Dictionary mapping channel numbers to ScanDataResult objects (or None)
         """
         logger.info(f"Scan complete. Measurements: {measurements}")
 
         # Update all channel indicators with new measurements
-        for channel_num, value in measurements.items():
+        for channel_num, result in measurements.items():
             if 1 <= channel_num <= 16:
                 indicator = self.channel_indicators[channel_num - 1]
-                indicator.set_value(value)
+                
+                if result is None:
+                    # No data available for this channel
+                    indicator.set_status("No data", error=True)
+                elif result.unit == "OVERLOAD":
+                    # Overload condition detected
+                    indicator.set_status(result.full_unit, error=True)
+                else:
+                    # Valid measurement - update with value and unit
+                    indicator.set_value(result.value, result.unit)
 
         # Update status
         self.lbl_scan_status.setText(
@@ -493,15 +502,24 @@ class MainWindow(QMainWindow):
         """Handle single scan complete signal.
 
         Args:
-            measurements: Dictionary mapping channel numbers to measured values
+            measurements: Dictionary mapping channel numbers to ScanDataResult objects (or None)
         """
         logger.info(f"Single scan complete. Measurements: {measurements}")
 
         # Update all channel indicators with new measurements
-        for channel_num, value in measurements.items():
+        for channel_num, result in measurements.items():
             if 1 <= channel_num <= 16:
                 indicator = self.channel_indicators[channel_num - 1]
-                indicator.set_value(value)
+                
+                if result is None:
+                    # No data available for this channel
+                    indicator.set_status("No data", error=True)
+                elif result.unit == "OVERLOAD":
+                    # Overload condition detected
+                    indicator.set_status(result.full_unit, error=True)
+                else:
+                    # Valid measurement - update with value and unit
+                    indicator.set_value(result.value, result.unit)
 
         # Update status
         self.lbl_scan_status.setText(
@@ -509,22 +527,33 @@ class MainWindow(QMainWindow):
         self.status_updated.emit(
             f"Single scan complete - {len(measurements)} channels measured")
 
-    @Slot(int, float)
-    def _on_channel_read(self, channel_num: int, value: float) -> None:
+    @Slot(int, object)
+    def _on_channel_read(self, channel_num: int, result: object) -> None:
         """Handle individual channel read signal.
 
         Args:
             channel_num: Channel number (1-16)
-            value: Measured value
+            result: ScanDataResult object or None
         """
-        logger.debug(f"Channel {channel_num} read: {value}")
+        logger.debug(f"Channel {channel_num} read: {result}")
 
         # Only update indicator if scan is still running
         # Don't set status here - let _on_scan_complete handle final display
         if 1 <= channel_num <= 16:
             indicator = self.channel_indicators[channel_num - 1]
-            # Just update value, don't set status
-            indicator.set_value(value)
+            
+            if result is None:
+                # No data available for this channel
+                indicator.set_status("No data", error=True)
+            elif isinstance(result, ScanDataResult) and result.unit == "OVERLOAD":
+                # Overload condition detected
+                indicator.set_status(result.full_unit, error=True)
+            elif isinstance(result, ScanDataResult):
+                # Valid measurement - update with value and unit
+                indicator.set_value(result.value, result.unit)
+            else:
+                # Fallback for backward compatibility (if result is a float)
+                indicator.set_value(float(result))
 
     def closeEvent(self, event) -> None:
         """Handle window close event."""
