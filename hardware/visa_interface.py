@@ -3,13 +3,23 @@ VISA interface for SDM4055A-SC multimeter communication.
 """
 
 import pyvisa
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 import logging
 import time
 from enum import Enum
+from dataclasses import dataclass
 from PySide6.QtCore import QMutex, QMutexLocker
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ScanDataResult:
+    """Result from scanning a channel with unit information."""
+    value: float
+    unit: str  # Base unit (V, A, OHM, F, Hz, °C, etc.)
+    full_unit: str  # Full unit string (VDC, VAC, ADC, AAC, OHM, etc.)
+    range_info: str = ""  # Optional range information (e.g., "200mV", "2V", "AUTO")
 
 
 class MeasurementType(Enum):
@@ -403,9 +413,10 @@ class VisaInterface:
             # Get SCPI range command from range value
             range_scpi = self.RANGE_TO_SCPI.get(config.range_value, "AUTO")
             
-            # Determine speed based on measurement type
+            # Determine speed based on measurement type and range
             # Current measurements (DCI, ACI) must use SLOW speed
-            if channel_type in ["DCI", "ACI"]:
+            # 200 mV range also requires SLOW speed to avoid errors
+            if channel_type in ["DCI", "ACI"] or range_scpi == "200mV":
                 speed = "SLOW"
             else:
                 speed = "FAST"
@@ -546,15 +557,15 @@ class VisaInterface:
             logger.error(f"Unexpected error during scan status check: {e}")
             return False
 
-    def get_scan_data(self, channel_num: int) -> Optional[float]:
+    def get_scan_data(self, channel_num: int) -> Optional[ScanDataResult]:
         """
-        Get scan data for a specific channel.
+        Get scan data for a specific channel with unit information.
 
         Args:
             channel_num: Channel number (1-16).
 
         Returns:
-            Measurement value as float, or None if read failed.
+            ScanDataResult with value, unit, and full_unit, or None if read failed.
         """
         if not self._connected or not self.instrument:
             logger.warning("Attempted to get scan data while not connected")

@@ -27,6 +27,7 @@ The CS1016 scanning card does NOT support all ranges that the multimeter support
 **Important Notes:**
 - Maximum voltage for CS1016: **125V AC, 110V DC** (per safety specifications)
 - The 1000 V and 750 V ranges are **NOT supported** by the CS1016 scanning card
+- **200 mV range MUST use SLOW speed** (FAST speed will cause errors)
 - If you need to measure voltages above 200V, use the multimeter in standalone mode (without scanning)
 
 ### Current (DCI/ACI)
@@ -167,7 +168,7 @@ Where:
 
 **Correct usage (supported ranges):**
 ```
-:ROUT:CHAN 1,ON,DCV,200mV,FAST
+:ROUT:CHAN 1,ON,DCV,200mV,SLOW     # 200 mV MUST use SLOW speed
 :ROUT:CHAN 1,ON,DCV,2V,FAST
 :ROUT:CHAN 1,ON,DCV,20V,FAST
 :ROUT:CHAN 1,ON,DCV,200V,FAST
@@ -197,9 +198,9 @@ Where:
 |-------|-------|----------|
 | 1000 V range error | CS1016 does not support 1000 V | Use 200 V max or AUTO |
 | 750 V range error | CS1016 does not support 750 V | Use 200 V max or AUTO |
-| 200 mV range error | Should work - check command format | Verify SCPI command format: `200mV` (not `200 mV`) |
+| 200 mV range error | 200 mV MUST use SLOW speed | Use SLOW speed for 200 mV range |
 | Current range errors (except 2A) | CS1016 only supports 2A range | Use 2A range for current measurements |
-| Current measurement errors | Current MUST use SLOW speed | Use SLOW speed for current measurements (DCA/ACA) |
+| Current measurement errors | Current MUST use SLOW speed | Use SLOW speed for current measurements (DCI/ACI) |
 | 2 mF, 20 mF, 100 mF errors | Not supported on SDM4055A | Use 10000 uF or AUTO instead |
 
 ## Comparison: Multimeter vs CS1016 Scanning Card
@@ -230,6 +231,7 @@ Where:
 
 1. **For Voltage Measurements:**
    - Use CS1016 for voltages up to 200V
+   - **200 mV range MUST use SLOW speed** (not FAST)
    - For voltages above 200V, use the multimeter in standalone mode
 
 2. **For Current Measurements:**
