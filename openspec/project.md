@@ -174,6 +174,50 @@ The device communicates via USB using VISA protocol, which is an industry standa
   - Data file inclusion: `gui`, `hardware` directories
   - Standalone Windows executable output
 
+## Recent Changes (2026-01-19)
+
+### New Features
+1. **Unit Display and Overload Detection**
+    - Added `ScanDataResult` dataclass to capture unit information from multimeter responses
+    - Implemented unit parsing from SCPI responses (e.g., "VDC" → "V", "ADC" → "A")
+    - Added overload detection with two methods:
+      - String detection: checks for "overload" in response (case-insensitive)
+      - Value threshold: detects values > 1e35 (multimeter's overload indicator)
+    - Updated signal types to pass `ScanDataResult` objects instead of `float`
+    - Enhanced GUI to display overload messages (e.g., "overloadDC") in red color
+    - Added unit display support for AUTO range (uses unit from multimeter response)
+    - Implemented backward compatibility for `float` values
+
+### Modified Files
+- **hardware/visa_interface.py**:
+  - Added `ScanDataResult` dataclass with value, unit, full_unit, and range_info fields
+  - Updated `get_scan_data()` to return `ScanDataResult` objects
+  - Implemented unit parsing logic with comprehensive unit mapping
+  - Added overload detection with proper message construction
+  - Updated `read_all_channels()` return type to `Dict[int, Optional[ScanDataResult]]`
+  - Updated `_read_channels_sequentially()` return type to `Dict[int, Optional[ScanDataResult]]`
+
+- **hardware/async_worker.py**:
+  - Added `ScanDataResult` import
+  - Updated `channel_read` signal type from `Signal(int, float)` to `Signal(int, object)`
+
+- **gui/window.py**:
+  - Added `ScanDataResult` import
+  - Updated `_on_scan_complete()` to handle `ScanDataResult` objects with overload detection
+  - Updated `_on_single_scan_complete()` to handle `ScanDataResult` objects with overload detection
+  - Updated `_on_channel_read()` to handle `ScanDataResult` objects with backward compatibility
+
+- **gui/widgets.py**:
+  - Updated `set_value()` method to accept and use unit parameter
+  - Added comments explaining AUTO range behavior (uses unit from multimeter response)
+
+### Documentation
+- **doc/UNIT_AND_OVERLOAD_FIX.md** (NEW): Comprehensive documentation of unit display and overload detection implementation
+
+### Archived Proposals
+- **add-dynamic-unit-display** → archived in `openspec/changes/archive/2026-01-19-unit-and-overload-display/`
+- **add-range-based-unit-display** → archived in `openspec/changes/archive/2026-01-19-unit-and-overload-display/`
+
 ## Recent Changes (2026-01-14)
 
 ### New Features
