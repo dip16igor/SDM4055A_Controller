@@ -1,5 +1,7 @@
 # Change: Add Dynamic Unit Display Based on Measurement Type
 
+**Status: archived**
+
 ## Why
 Currently, the channel indicators display a static unit label (default "V") that does not update when the measurement type changes. This creates user confusion as the displayed unit may not match the actual measurement being taken (e.g., showing "V" when measuring current in Amperes). Users need clear, accurate unit labels that automatically reflect the selected measurement mode.
 

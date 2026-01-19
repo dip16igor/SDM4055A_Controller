@@ -1,5 +1,7 @@
 # Change: Add Range-Based Unit Display
 
+**Status: archived**
+
 ## Why
 Currently, the system displays only base units (V, A, Ohm, F, Hz, C) regardless of the selected measurement range. The SDM4055A-SC multimeter supports multiple ranges for each measurement type (e.g., 200 mV, 2 V, 20 V for voltage), and users need to see the appropriate unit (mV, V, etc.) based on the selected range.
 
