@@ -164,7 +164,11 @@ class VisaInterface:
             error_response = self.instrument.query(":SYST:ERR?")
             error_response = error_response.strip()
             
-            if error_response and error_response != '0,"No error"':
+            # Parse error code from response (format: "code,message")
+            error_code = error_response.split(',')[0] if ',' in error_response else error_response
+            
+            # Only log if there's an actual error (error code != 0)
+            if error_code and error_code != '0' and error_response != '0,"No error"':
                 logger.error(f"After {operation_name}: Device error - {error_response}")
                 
                 # Try to get additional error details
@@ -173,7 +177,8 @@ class VisaInterface:
                     for i in range(5):  # Check up to 5 errors
                         error_query = self.instrument.query(":SYST:ERR?")
                         error_query = error_query.strip()
-                        if error_query == '0,"No error"':
+                        query_error_code = error_query.split(',')[0] if ',' in error_query else error_query
+                        if query_error_code == '0' or error_query == '0,"No error"':
                             break
                         logger.error(f"  Error queue [{i}]: {error_query}")
                 except pyvisa.Error as e:
@@ -414,20 +419,21 @@ class VisaInterface:
             # Enable scan mode
             logger.info("Sending: :ROUT:SCAN ON")
             self.instrument.write(":ROUT:SCAN ON")
-            time.sleep(0.2)  # 200ms delay for mode to settle
+            time.sleep(1.0)  # 1 second delay for mode to settle (DEBUG: to identify which command causes beep)
             self._check_and_log_errors("enable scan mode (:ROUT:SCAN ON)")
             
             # Set scan function to STEP
             logger.info("Sending: :ROUT:FUNC STEP")
             self.instrument.write(":ROUT:FUNC STEP")
-            time.sleep(0.1)  # 100ms delay
+            time.sleep(1.0)  # 1 second delay (DEBUG: to identify which command causes beep)
             self._check_and_log_errors("set scan function to STEP (:ROUT:FUNC STEP)")
             
             # Turn off auto-zero for faster scanning (optional)
-            logger.info("Sending: :ROUT:DCV:AZ OFF")
-            self.instrument.write(":ROUT:DCV:AZ OFF")
-            time.sleep(0.1)  # 100ms delay
-            self._check_and_log_errors("turn off auto-zero (:ROUT:DCV:AZ OFF)")
+            # COMMENTED OUT: This command causes error/beep on CS1016 scanning card
+            # logger.info("Sending: :ROUT:DCV:AZ OFF")
+            # self.instrument.write(":ROUT:DCV:AZ OFF")
+            # time.sleep(1.0)  # 1 second delay (DEBUG: to identify which command causes beep)
+            # self._check_and_log_errors("turn off auto-zero (:ROUT:DCV:AZ OFF)")
             
             self._scan_mode_enabled = True
             logger.info("Scan mode enabled successfully")
