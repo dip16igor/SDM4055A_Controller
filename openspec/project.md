@@ -217,6 +217,7 @@ The device communicates via USB using VISA protocol, which is an industry standa
 ### Archived Proposals
 - **add-dynamic-unit-display** → archived in `openspec/changes/archive/2026-01-19-unit-and-overload-display/`
 - **add-range-based-unit-display** → archived in `openspec/changes/archive/2026-01-19-unit-and-overload-display/`
+- **2026-01-19-compact-value-display** → archived in `openspec/changes/archive/2026-01-19-compact-value-display/`
 
 ## Recent Changes (2026-01-14)
 
