@@ -71,6 +71,7 @@ class VisaInterface:
         self.instrument: Optional[pyvisa.resources.MessageBasedResource] = None
         self._connected = False
         self._scan_mode_enabled = False
+        self._has_scanning_card = False  # Track if CS1016 scanning card is detected
         
         # Mutex for thread-safe access to device
         self._mutex = QMutex()
@@ -134,7 +135,39 @@ class VisaInterface:
                 # Check for any errors after identification query
                 logger.info("Step 5: Checking for device errors after identification...")
                 self._check_and_log_errors("device identification query")
-
+                
+                # Step 6: Check for scanning card presence
+                logger.info("Step 6: Checking for scanning card (ROUTe:STATe?)...")
+                try:
+                    route_state = self.instrument.query(":ROUT:STATe?")
+                    route_state = route_state.strip()
+                    logger.info(f"  Scanning card status: {route_state}")
+                    if route_state == "1" or route_state.upper() == "ON":
+                        logger.info("  Scanning card DETECTED - CS1016 or similar is installed")
+                        self._has_scanning_card = True
+                    else:
+                        logger.warning("  Scanning card NOT DETECTED - No scanning card installed")
+                        self._has_scanning_card = False
+                    self._check_and_log_errors("scanning card status query")
+                except Exception as e:
+                    logger.error(f"  Error querying scanning card status: {e}")
+                    logger.warning("  Assuming no scanning card is installed")
+                    self._has_scanning_card = False
+                
+                # Step 7: Check scan function status
+                logger.info("Step 7: Checking scan function status (ROUTe:SCAN?)...")
+                try:
+                    scan_status = self.instrument.query(":ROUT:SCAN?")
+                    scan_status = scan_status.strip()
+                    logger.info(f"  Scan function status: {scan_status}")
+                    if scan_status == "1" or scan_status.upper() == "ON":
+                        logger.info("  Scan function is ENABLED")
+                    else:
+                        logger.info("  Scan function is DISABLED")
+                    self._check_and_log_errors("scan function status query")
+                except Exception as e:
+                    logger.error(f"  Error querying scan function status: {e}")
+                
                 self._connected = True
                 logger.info("=" * 80)
                 logger.info("MULTIMETER INITIALIZATION COMPLETED SUCCESSFULLY")
@@ -271,7 +304,7 @@ class VisaInterface:
     # See doc/CS1016_Supported_Ranges.md for detailed information
     RANGE_TO_SCPI = {
         # Voltage ranges - CS1016 only supports up to 200V (1000V and 750V are NOT supported)
-        "200 mV": "200mV",
+        "200 mV": "200MLV",
         "2 V": "2V",
         "20 V": "20V",
         "200 V": "200V",
@@ -437,6 +470,17 @@ class VisaInterface:
             
             self._scan_mode_enabled = True
             logger.info("Scan mode enabled successfully")
+            
+            # Verify scan status after enabling
+            logger.info("Verifying scan status after enabling...")
+            try:
+                scan_verify = self.instrument.query(":ROUT:SCAN?")
+                scan_verify = scan_verify.strip()
+                logger.info(f"  Scan status verification: {scan_verify}")
+                self._check_and_log_errors("scan status verification")
+            except Exception as e:
+                logger.error(f"  Error verifying scan status: {e}")
+            
             return True
         except pyvisa.Error as e:
             logger.error(f"VISA scan mode enable error: {e}")
