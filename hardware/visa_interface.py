@@ -88,36 +88,100 @@ class VisaInterface:
         """
         with QMutexLocker(self._mutex):
             try:
+                logger.info("=" * 80)
+                logger.info("MULTIMETER INITIALIZATION STARTED")
+                logger.info("=" * 80)
+                
+                logger.info("Step 1: Creating VISA Resource Manager...")
                 self.rm = pyvisa.ResourceManager()
+                logger.info("  VISA Resource Manager created successfully")
 
                 # Auto-detect device if resource string not provided
                 if not self.resource_string:
+                    logger.info("Step 2: Auto-detecting VISA resources...")
                     resources = self.rm.list_resources()
                     if not resources:
-                        logger.error("No VISA resources found")
+                        logger.error("  No VISA resources found")
+                        logger.error("MULTIMETER INITIALIZATION FAILED")
                         return False
+                    logger.info(f"  Found {len(resources)} VISA resource(s): {resources}")
                     # Use first USB resource
                     self.resource_string = next((r for r in resources if "USB" in r), resources[0])
-                    logger.info(f"Auto-detected resource: {self.resource_string}")
+                    logger.info(f"  Auto-detected resource: {self.resource_string}")
+                else:
+                    logger.info(f"Step 2: Using provided resource string: {self.resource_string}")
 
+                logger.info("Step 3: Opening VISA resource...")
+                logger.info(f"  Opening resource: {self.resource_string}")
                 self.instrument = self.rm.open_resource(self.resource_string)
                 self.instrument.timeout = 2000  # 2 second timeout
+                logger.info(f"  Resource opened successfully, timeout set to {self.instrument.timeout}ms")
 
                 # Send identification query to verify connection
+                logger.info("Step 4: Querying device identification (*IDN?)...")
                 idn = self.instrument.query("*IDN?")
-                logger.info(f"Connected to: {idn.strip()}")
+                idn = idn.strip()
+                logger.info(f"  Device IDN response: {idn}")
+                
+                # Parse IDN for more detailed logging
+                idn_parts = idn.split(',')
+                if len(idn_parts) >= 4:
+                    logger.info(f"  Manufacturer: {idn_parts[0].strip()}")
+                    logger.info(f"  Model: {idn_parts[1].strip()}")
+                    logger.info(f"  Serial: {idn_parts[2].strip()}")
+                    logger.info(f"  Firmware: {idn_parts[3].strip()}")
+                
+                # Check for any errors after identification query
+                logger.info("Step 5: Checking for device errors after identification...")
+                self._check_and_log_errors("device identification query")
 
                 self._connected = True
+                logger.info("=" * 80)
+                logger.info("MULTIMETER INITIALIZATION COMPLETED SUCCESSFULLY")
+                logger.info("=" * 80)
                 return True
 
             except pyvisa.Error as e:
                 logger.error(f"VISA connection error: {e}")
+                logger.error("MULTIMETER INITIALIZATION FAILED")
                 self._connected = False
                 return False
             except Exception as e:
                 logger.error(f"Unexpected error during connection: {e}")
+                logger.error("MULTIMETER INITIALIZATION FAILED")
                 self._connected = False
                 return False
+
+    def _check_and_log_errors(self, operation_name: str = "operation") -> None:
+        """
+        Check for device errors and log them.
+
+        Args:
+            operation_name: Name of the operation that was performed (for logging).
+        """
+        try:
+            # Query system error status to detect any errors
+            error_response = self.instrument.query(":SYST:ERR?")
+            error_response = error_response.strip()
+            
+            if error_response and error_response != '0,"No error"':
+                logger.error(f"After {operation_name}: Device error - {error_response}")
+                
+                # Try to get additional error details
+                try:
+                    # Query multiple times to get all errors in the queue
+                    for i in range(5):  # Check up to 5 errors
+                        error_query = self.instrument.query(":SYST:ERR?")
+                        error_query = error_query.strip()
+                        if error_query == '0,"No error"':
+                            break
+                        logger.error(f"  Error queue [{i}]: {error_query}")
+                except pyvisa.Error as e:
+                    logger.warning(f"Could not query additional error details: {e}")
+            else:
+                logger.debug(f"After {operation_name}: No device errors")
+        except pyvisa.Error as e:
+            logger.warning(f"Could not query error status after {operation_name}: {e}")
 
     def disconnect(self) -> None:
         """Terminate connection to multimeter."""
@@ -182,9 +246,13 @@ class VisaInterface:
             return False
 
         try:
-            self.instrument.write(f":CONF:{function}")
+            cmd = f":CONF:{function}"
+            logger.debug(f"Sending command: {cmd}")
+            self.instrument.write(cmd)
             # Add delay to allow measurement function to settle
             time.sleep(0.05)  # 50ms delay for function settling
+            # Check for errors after setting function
+            self._check_and_log_errors(f"set measurement function to {function}")
             return True
         except pyvisa.Error as e:
             logger.error(f"VISA write error: {e}")
@@ -347,16 +415,19 @@ class VisaInterface:
             logger.info("Sending: :ROUT:SCAN ON")
             self.instrument.write(":ROUT:SCAN ON")
             time.sleep(0.2)  # 200ms delay for mode to settle
+            self._check_and_log_errors("enable scan mode (:ROUT:SCAN ON)")
             
             # Set scan function to STEP
             logger.info("Sending: :ROUT:FUNC STEP")
             self.instrument.write(":ROUT:FUNC STEP")
             time.sleep(0.1)  # 100ms delay
+            self._check_and_log_errors("set scan function to STEP (:ROUT:FUNC STEP)")
             
             # Turn off auto-zero for faster scanning (optional)
             logger.info("Sending: :ROUT:DCV:AZ OFF")
             self.instrument.write(":ROUT:DCV:AZ OFF")
             time.sleep(0.1)  # 100ms delay
+            self._check_and_log_errors("turn off auto-zero (:ROUT:DCV:AZ OFF)")
             
             self._scan_mode_enabled = True
             logger.info("Scan mode enabled successfully")
@@ -427,21 +498,8 @@ class VisaInterface:
             self.instrument.write(cmd)
             time.sleep(0.05)  # 50ms delay
             
-            # Check for errors after configuration
-            try:
-                # Query system error status to detect configuration errors
-                error_response = self.instrument.query(":SYST:ERR?")
-                error_response = error_response.strip()
-                if error_response and error_response != '0,"No error"':
-                    logger.error(f"Channel {channel_num} configuration error: {error_response}")
-                    # Log additional details
-                    try:
-                        error_query = self.instrument.query(":SYST:ERR?")
-                        logger.error(f"Error details: {error_query.strip()}")
-                    except:
-                        pass
-            except pyvisa.Error as e:
-                logger.warning(f"Could not query error status: {e}")
+            # Check for errors after configuration using the helper method
+            self._check_and_log_errors(f"configure channel {channel_num} ({cmd})")
             
             logger.debug(f"Configured channel {channel_num} as {channel_type} with range {range_scpi}")
             return True
@@ -463,8 +521,6 @@ class VisaInterface:
             if not self.configure_scan_channel(channel_num):
                 logger.error(f"Failed to configure channel {channel_num}")
                 return False
-            # Add delay between channel configurations
-            time.sleep(1.0)  # 1 second delay between channels for device to settle
         return True
 
     def set_scan_limits(self, low: int = 1, high: int = 16) -> bool:
@@ -488,12 +544,16 @@ class VisaInterface:
 
         try:
             # Set high limit
+            logger.debug(f"Sending: :ROUT:LIMI:HIGH {high}")
             self.instrument.write(f":ROUT:LIMI:HIGH {high}")
             time.sleep(0.1)  # 100ms delay
+            self._check_and_log_errors(f"set high scan limit to {high}")
             
             # Set low limit
+            logger.debug(f"Sending: :ROUT:LIMI:LOW {low}")
             self.instrument.write(f":ROUT:LIMI:LOW {low}")
             time.sleep(0.1)  # 100ms delay
+            self._check_and_log_errors(f"set low scan limit to {low}")
             
             logger.info(f"Set scan limits: {low} to {high}")
             return True
@@ -520,11 +580,13 @@ class VisaInterface:
             logger.info("Sending: :ROUT:COUN 1")
             self.instrument.write(":ROUT:COUN 1")
             time.sleep(0.1)  # 100ms delay
+            self._check_and_log_errors("set scan count to 1 (:ROUT:COUN 1)")
             
             # Start scan
             logger.info("Sending: :ROUT:START ON")
             self.instrument.write(":ROUT:START ON")
             time.sleep(0.2)  # 200ms delay for scan to start
+            self._check_and_log_errors("start scan (:ROUT:START ON)")
             
             logger.info("Scan started successfully")
             return True
@@ -845,7 +907,12 @@ class VisaInterface:
             
             try:
                 # Query device identification
+                logger.debug("Querying device identification (*IDN?)...")
                 idn = self.instrument.query("*IDN?").strip()
+                logger.debug(f"Device IDN response: {idn}")
+                
+                # Check for errors after identification query
+                self._check_and_log_errors("device info query (*IDN?)")
                 
                 # Parse IDN response (format: manufacturer,model,serial,version)
                 parts = idn.split(',')
