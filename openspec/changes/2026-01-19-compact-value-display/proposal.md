@@ -16,7 +16,7 @@ Increasing the font size will:
 
 ## What Changes
 - Move unit display from separate label to inline with measured value (e.g., "5.001619 V" instead of value on one line and "V" on the next)
-- Increase measurement value font size from 36pt to 42pt for better readability
+- Increase measurement value font size from 36pt to 30pt for better readability
 - Adjust layout to accommodate inline unit display
 - Maintain threshold-based color coding functionality
 - Preserve all existing functionality (measurement types, ranges, thresholds, etc.)
@@ -34,7 +34,7 @@ The `ChannelIndicator` widget currently uses:
 Changes will:
 1. Remove the separate `unit_label` widget
 2. Modify `value_label` to include the unit inline (e.g., `f"{value:.6f} {unit}"`)
-3. Increase `value_label` font size from 36pt to 42pt
+3. Increase `value_label` font size from 36pt to 30pt
 4. Update `set_value()` method to include unit in the text
 5. Remove or simplify `set_unit()` method as units will be part of value display
 6. Adjust vertical spacing in the layout to accommodate larger font
