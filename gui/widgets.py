@@ -127,6 +127,9 @@ class ChannelIndicator(QWidget):
     Includes channel number, value display, unit label, and measurement type selector.
     """
 
+    # Font size constants for easy customization
+    VALUE_FONT_SIZE = 14 # Size of measurement value font (in points)
+    
     measurement_type_changed = Signal(int, str)  # Signal emitted when measurement type changes (channel_num, type)
     range_changed = Signal(int, str)  # Signal emitted when range changes (channel_num, range_value)
 
@@ -267,17 +270,17 @@ class ChannelIndicator(QWidget):
         self.value_label = QLabel("0.0000 V")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         value_font = QFont()
-        value_font.setPointSize(30)
+        value_font.setPointSize(self.VALUE_FONT_SIZE)
         value_font.setBold(True)
         value_font.setFamily("Consolas, Courier New, monospace")
         self.value_label.setFont(value_font)
         # Apply font via stylesheet to override theme defaults
-        self.value_label.setStyleSheet("""
-            QLabel {
-                font-size: 30pt;
+        self.value_label.setStyleSheet(f"""
+            QLabel {{
+                font-size: {self.VALUE_FONT_SIZE}pt;
                 font-weight: bold;
                 font-family: 'Consolas', 'Courier New', monospace;
-            }
+            }}
         """)
         layout.addWidget(self.value_label)
         
@@ -420,16 +423,16 @@ class ChannelIndicator(QWidget):
         """
         self.value_label.setText(status)
         if error:
-            self.value_label.setStyleSheet("""
+            self.value_label.setStyleSheet(f"""
                 color: #ff6b6b;
-                font-size: 30pt;
+                font-size: {self.VALUE_FONT_SIZE}pt;
                 font-weight: bold;
                 font-family: 'Consolas', 'Courier New', monospace;
             """)
         else:
-            self.value_label.setStyleSheet("""
+            self.value_label.setStyleSheet(f"""
                 color: #51cf66;
-                font-size: 30pt;
+                font-size: {self.VALUE_FONT_SIZE}pt;
                 font-weight: bold;
                 font-family: 'Consolas', 'Courier New', monospace;
             """)
@@ -437,8 +440,8 @@ class ChannelIndicator(QWidget):
     def reset_status(self) -> None:
         """Reset the value label to normal display."""
         self.value_label.setText(f"{self._value:.6f} {self._unit}")
-        self.value_label.setStyleSheet("""
-            font-size: 30pt;
+        self.value_label.setStyleSheet(f"""
+            font-size: {self.VALUE_FONT_SIZE}pt;
             font-weight: bold;
             font-family: 'Consolas', 'Courier New', monospace;
         """)
@@ -510,16 +513,16 @@ class ChannelIndicator(QWidget):
         
         # Apply color while preserving font style
         if in_range:
-            self.value_label.setStyleSheet("""
+            self.value_label.setStyleSheet(f"""
                 color: #51cf66;
-                font-size: 30pt;
+                font-size: {self.VALUE_FONT_SIZE}pt;
                 font-weight: bold;
                 font-family: 'Consolas', 'Courier New', monospace;
             """)  # Green
         else:
-            self.value_label.setStyleSheet("""
+            self.value_label.setStyleSheet(f"""
                 color: #ff6b6b;
-                font-size: 30pt;
+                font-size: {self.VALUE_FONT_SIZE}pt;
                 font-weight: bold;
                 font-family: 'Consolas', 'Courier New', monospace;
             """)  # Red
