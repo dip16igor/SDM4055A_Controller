@@ -129,7 +129,7 @@ def test_compact_value_display_with_theme():
     
     print("\n[OK] All tests passed!")
     print("[OK] Units are displayed inline with values")
-    print("[OK] Font size is 60pt (should be noticeably larger)")
+    print("[OK] Font size is 42pt (optimal balance)")
     print("[OK] Layout is more compact")
     print("[OK] Threshold color coding works with inline units")
     print("[OK] Status messages display correctly")

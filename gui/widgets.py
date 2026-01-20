@@ -267,14 +267,14 @@ class ChannelIndicator(QWidget):
         self.value_label = QLabel("0.0000 V")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         value_font = QFont()
-        value_font.setPointSize(60)
+        value_font.setPointSize(42)
         value_font.setBold(True)
         value_font.setFamily("Consolas, Courier New, monospace")
         self.value_label.setFont(value_font)
         # Apply font via stylesheet to override theme defaults
         self.value_label.setStyleSheet("""
             QLabel {
-                font-size: 60pt;
+                font-size: 42pt;
                 font-weight: bold;
                 font-family: 'Consolas', 'Courier New', monospace;
             }
@@ -422,14 +422,14 @@ class ChannelIndicator(QWidget):
         if error:
             self.value_label.setStyleSheet("""
                 color: #ff6b6b;
-                font-size: 60pt;
+                font-size: 42pt;
                 font-weight: bold;
                 font-family: 'Consolas', 'Courier New', monospace;
             """)
         else:
             self.value_label.setStyleSheet("""
                 color: #51cf66;
-                font-size: 60pt;
+                font-size: 42pt;
                 font-weight: bold;
                 font-family: 'Consolas', 'Courier New', monospace;
             """)
@@ -438,7 +438,7 @@ class ChannelIndicator(QWidget):
         """Reset the value label to normal display."""
         self.value_label.setText(f"{self._value:.6f} {self._unit}")
         self.value_label.setStyleSheet("""
-            font-size: 60pt;
+            font-size: 42pt;
             font-weight: bold;
             font-family: 'Consolas', 'Courier New', monospace;
         """)
@@ -512,14 +512,14 @@ class ChannelIndicator(QWidget):
         if in_range:
             self.value_label.setStyleSheet("""
                 color: #51cf66;
-                font-size: 60pt;
+                font-size: 42pt;
                 font-weight: bold;
                 font-family: 'Consolas', 'Courier New', monospace;
             """)  # Green
         else:
             self.value_label.setStyleSheet("""
                 color: #ff6b6b;
-                font-size: 60pt;
+                font-size: 42pt;
                 font-weight: bold;
                 font-family: 'Consolas', 'Courier New', monospace;
             """)  # Red

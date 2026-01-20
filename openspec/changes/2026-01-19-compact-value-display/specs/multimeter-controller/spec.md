@@ -11,7 +11,7 @@ The channel indicator SHALL display measurement values with inline units.
 
 #### Scenario: Measurement value font size
 - **WHEN** viewing a channel indicator
-- **THEN** measurement value (including unit) is displayed in 60pt font
+- **THEN** measurement value (including unit) is displayed in 42pt font
 - **AND** font is bold and monospace for readability
 - **AND** font family is "Consolas, Courier New, monospace"
 
@@ -66,7 +66,7 @@ The channel indicator SHALL display measurement values with inline units.
 - **WHEN** viewing multiple channel indicators
 - **THEN** vertical space usage is reduced compared to previous layout
 - **AND** more channels fit on screen at once
-- **AND** layout remains readable with 60pt font
+- **AND** layout remains readable with 42pt font
 
 ### Requirement: Channel Indicator Layout
 The channel indicator layout SHALL accommodate inline unit display.
@@ -85,4 +85,4 @@ The channel indicator layout SHALL accommodate inline unit display.
 - **WHEN** comparing multiple channel indicators
 - **THEN** all indicators have consistent layout
 - **AND** all use inline unit display
-- **AND** all use 60pt font for values
+- **AND** all use 42pt font for values
