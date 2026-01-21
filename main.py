@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QApplication
 from qt_material import apply_stylesheet
 
 from gui import MainWindow
+import version
 
 
 def setup_logging() -> None:
@@ -46,7 +47,7 @@ def main() -> int:
     logger.info("Applied dark_teal theme")
 
     # Create and show main window
-    window = MainWindow()
+    window = MainWindow(version=version.__version__)
     window.show()
     logger.info("Main window displayed")
 

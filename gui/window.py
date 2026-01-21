@@ -2,6 +2,7 @@
 Main application window for SDM4055A-SC multimeter controller.
 """
 import logging
+import re
 from typing import Dict, List, Optional
 
 from PySide6.QtCore import QObject, Signal, Slot
@@ -21,6 +22,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QGridLayout,
     QFileDialog,
+    QLineEdit,
 )
 
 from hardware.visa_interface import VisaInterface, MeasurementType, ScanDataResult
@@ -41,10 +43,15 @@ class MainWindow(QMainWindow):
     scan_started = Signal()
     scan_complete = Signal(object)
 
-    def __init__(self, parent: Optional[QObject] = None) -> None:
-        """Initialize main window."""
+    def __init__(self, version: str = "1.0.0", parent: Optional[QObject] = None) -> None:
+        """Initialize main window.
+        
+        Args:
+            version: Application version string.
+            parent: Parent widget.
+        """
         super().__init__(parent)
-        self.setWindowTitle("SDM4055A-SC Multimeter Controller")
+        self.setWindowTitle(f"SDM4055A-SC Multimeter Controller v{version}")
         self.resize(1200, 800)
 
         # Initialize VISA interface
@@ -131,6 +138,17 @@ class MainWindow(QMainWindow):
         scan_group = QGroupBox("Scan Control")
         scan_layout = QHBoxLayout()
 
+        # Serial number input section
+        self.lbl_serial_number = QLabel("Serial Number:")
+        self.serial_number_input = QLineEdit()
+        self.serial_number_input.setPlaceholderText("PSN123456789")
+        self.serial_number_input.setMaximumWidth(150)
+        self.serial_number_input.textChanged.connect(self._on_serial_number_changed)
+        
+        scan_layout.addWidget(self.lbl_serial_number)
+        scan_layout.addWidget(self.serial_number_input)
+        scan_layout.addSpacing(20)
+
         self.btn_single_scan = QPushButton("Single Scan")
         self.btn_single_scan.clicked.connect(self._single_scan)
         self.btn_single_scan.setEnabled(False)
@@ -138,10 +156,12 @@ class MainWindow(QMainWindow):
         self.btn_start_scan = QPushButton("Start Scan")
         self.btn_start_scan.clicked.connect(self._start_scanning)
         self.btn_start_scan.setEnabled(False)
+        self.btn_start_scan.setVisible(False)
 
         self.btn_stop_scan = QPushButton("Stop Scan")
         self.btn_stop_scan.clicked.connect(self._stop_scanning)
         self.btn_stop_scan.setEnabled(False)
+        self.btn_stop_scan.setVisible(False)
 
         self.lbl_scan_status = QLabel("Ready to scan")
 
@@ -729,3 +749,24 @@ class MainWindow(QMainWindow):
         logger.info(
             f"Channel {channel_num} range changed to {range_value}")
         self._channel_ranges[channel_num] = range_value
+
+    def _on_serial_number_changed(self, text: str) -> None:
+        """Handle serial number input text change.
+        
+        Args:
+            text: Current text in the serial number input field.
+        """
+        # Validate serial number format: PSN followed by exactly 9 digits
+        pattern = r'^PSN\d{9}$'
+        
+        if text == "":
+            # Empty input - use default color
+            self.serial_number_input.setStyleSheet("")
+        elif re.match(pattern, text):
+            # Valid format - white color
+            self.serial_number_input.setStyleSheet("color: white;")
+            logger.debug(f"Valid serial number: {text}")
+        else:
+            # Invalid format - red color
+            self.serial_number_input.setStyleSheet("color: red;")
+            logger.debug(f"Invalid serial number: {text}")

@@ -174,6 +174,38 @@ The device communicates via USB using VISA protocol, which is an industry standa
   - Data file inclusion: `gui`, `hardware` directories
   - Standalone Windows executable output
 
+## Recent Changes (2026-01-21)
+
+### New Features
+1. **Serial Number Input Field**
+   - Added serial number input field in the "Scan Control" section of the main window
+   - Implemented real-time validation using regex pattern `^PSN\d{9}$` (PSN followed by exactly 9 digits)
+   - Visual feedback system:
+     - White text color for valid serial number format
+     - Red text color for invalid serial number format
+     - Default color for empty input
+   - Added placeholder text "PSN123456789" to guide users
+   - Hidden unused "Start Scan" and "Stop Scan" buttons (set visible to False)
+   - "Single Scan" button remains functional and visible
+
+### Modified Files
+- **gui/window.py**:
+  - Added `re` module import for regex validation
+  - Added `QLineEdit` import from PySide6.QtWidgets
+  - Created `serial_number_input` QLineEdit widget in Scan Control section
+  - Created `lbl_serial_number` QLabel for field identification
+  - Implemented `_on_serial_number_changed()` method for validation
+  - Connected `textChanged` signal to validation handler
+  - Set `setVisible(False)` on `btn_start_scan` and `btn_stop_scan`
+
+### Testing
+- **test_serial_number_validation.py** (NEW): Comprehensive test suite for serial number validation
+  - 16 test cases covering valid/invalid formats and edge cases
+  - All tests passed successfully
+
+### Archived Proposals
+- **add-serial-number-input** → archived in `openspec/changes/archive/2026-01-21-add-serial-number-input/`
+
 ## Recent Changes (2026-01-19)
 
 ### New Features

@@ -41,8 +41,10 @@ Look at the application logs for detailed information about the SCPI command bei
 
 **Expected Command for 200 mV:**
 ```
-:ROUT:CHAN 1,ON,DCV,200mV,FAST
+:ROUT:CHAN 1,ON,DCV,200MLV,FAST
 ```
+
+**Note:** The correct SCPI command uses "200MLV" (millivolts), not "200mV".
 
 **Expected Command for AUTO:**
 ```
@@ -55,22 +57,22 @@ The issue might be with the range format. Let's test different variations:
 
 #### Format A: Without space (as per CS1016 datasheet)
 ```
-:ROUT:CHAN 1,ON,DCV,200mV,FAST
+:ROUT:CHAN 1,ON,DCV,200MLV,FAST
 ```
 
 #### Format B: With space (as per SCPI reference)
 ```
-:ROUT:CHAN 1,ON,DCV,200 mV,FAST
+:ROUT:CHAN 1,ON,DCV,200 MLV,FAST
 ```
 
 #### Format C: Lowercase unit
 ```
-:ROUT:CHAN 1,ON,DCV,200mv,FAST
+:ROUT:CHAN 1,ON,DCV,200mlv,FAST
 ```
 
 #### Format D: With quotes
 ```
-:ROUT:CHAN 1,ON,DCV,"200mV",FAST
+:ROUT:CHAN 1,ON,DCV,"200MLV",FAST
 ```
 
 ### Step 4: Test Other Ranges
@@ -92,7 +94,7 @@ When the error occurs, check if the device returns any response:
 
 1. Open a terminal or command prompt
 2. Connect to the multimeter manually using VISA
-3. Send the command: `:ROUT:CHAN 1,ON,DCV,200mV,FAST`
+3. Send the command: `:ROUT:CHAN 1,ON,DCV,200MLV,FAST`
 4. Query the device status: `:SYST:ERR?`
 5. Note the error code and message
 
@@ -123,9 +125,9 @@ Review the CS1016 datasheet for exact command syntax:
 
 **From CS1016 Datasheet Table 3:**
 Available ranges for DCV/ACV/FRQ:
-- Auto, 200mV, 2V, 20V, 200V
+- Auto, 200MLV, 2V, 20V, 200V
 
-**Note:** The datasheet shows "200mV" (without space), not "200 mV" (with space).
+**Note:** The datasheet shows "200MLV" (millivolts), not "200mV". The correct SCPI command uses "MLV" for millivolts.
 
 ### Step 7: Test with Different Multimeter Models
 
@@ -144,7 +146,7 @@ Check if there are any firmware updates available for the CS1016 scanning card t
 Try configuring channels one by one instead of using scan mode:
 
 1. Set measurement function: `:CONF:VOLT:DC`
-2. Set range: `:CONF:VOLT:DC 200mV`
+2. Set range: `:CONF:VOLT:DC 200MLV`
 3. Read measurement: `:MEAS:VOLT:DC?`
 
 This bypasses the CS1016 scanning card and uses the main multimeter functions directly.
@@ -189,23 +191,77 @@ Once you provide the diagnostic information, I can:
 
 ## Code Changes Made
 
-### Added Delay Between Channel Configurations
+### Fixed 200mV Range Mapping
 
 **File:** `hardware/visa_interface.py`
-**Method:** [`configure_all_scan_channels()`](hardware/visa_interface.py:421)
-**Change:** Increased delay from 0.1s to 1.0s between channel configurations
+**Method:** [`RANGE_TO_SCPI`](hardware/visa_interface.py:307)
+**Change:** Corrected range mapping from "200mV" to "200MLV"
 
 **Before:**
 ```python
-time.sleep(0.1)  # 100ms delay between channels
+RANGE_TO_SCPI = {
+    "200 mV": "200mV",
+    ...
+}
 ```
 
 **After:**
 ```python
-time.sleep(1.0)  # 1 second delay between channels for device to settle
+RANGE_TO_SCPI = {
+    "200 mV": "200MLV",  # Corrected: use MLV (millivolts) not mV
+    ...
+}
 ```
 
-**Rationale:** The CS1016 scanning card may need additional time to settle between channel configuration changes, especially when switching ranges. A longer delay helps prevent timing issues that could cause SCPI errors.
+**Rationale:** The correct SCPI command for 200 millivolt range is "200MLV" (millivolts), not "200mV". This was causing "CSPI Execution Error" when selecting 200 mV range.
+
+### Added Diagnostic Logging
+
+**File:** `hardware/visa_interface.py`
+**Method:** [`connect()`](hardware/visa_interface.py:82)
+**Changes:**
+1. Added Step 6: Check for scanning card presence (`:ROUT:STATe?`)
+2. Added Step 7: Check scan function status (`:ROUT:SCAN?`)
+3. Added `_has_scanning_card` attribute to track detection
+
+### Added Error Checking After Each Command
+
+**File:** `hardware/visa_interface.py`
+**Method:** [`_check_and_log_errors()`](hardware/visa_interface.py:188)
+**Changes:**
+1. Created helper method to query `:SYST:ERR?` after operations
+2. Only logs actual errors (code != 0)
+3. Reads up to 5 errors from error queue
+4. Applied to all key commands:
+   - `set_measurement_function()`
+   - `configure_scan_channel()`
+   - `set_scan_limits()`
+   - `start_scan()`
+   - `get_scan_data()`
+
+### Removed Debug Pause
+
+**File:** `hardware/visa_interface.py`
+**Method:** [`configure_all_scan_channels()`](hardware/visa_interface.py:421)
+**Change:** Removed 1-second debug pause between channel configurations
+
+**Before:**
+```python
+for channel_num in range(1, 17):
+    if not self.configure_scan_channel(channel_num):
+        logger.error(f"Failed to configure channel {channel_num}")
+        return False
+    time.sleep(1.0)  # 1 second delay between channels
+```
+
+**After:**
+```python
+for channel_num in range(1, 17):
+    if not self.configure_scan_channel(channel_num):
+        logger.error(f"Failed to configure channel {channel_num}")
+        return False
+    # Delay removed
+```
 
 ## Testing the Fix
 
@@ -214,7 +270,8 @@ After updating to the latest code, please test:
 1. **Test 200 mV Range:**
    - Select "200 mV" for a channel
    - Start scanning
-   - Check if error still occurs
+   - Verify no error occurs
+   - Check logs for correct command: `:ROUT:CHAN X,ON,DCV,200MLV,FAST`
 
 2. **Test AUTO Range:**
    - Select "AUTO" for a channel
@@ -226,9 +283,11 @@ After updating to the latest code, please test:
    - Verify all work correctly
 
 4. **Check Logs:**
-   - Look for "Configuring channel" messages
-   - Verify 1-second delay is applied between channels
-   - Check for any error messages
+   - Look for "Step 6: Checking for scanning card" message
+   - Look for "Step 7: Checking scan function status" message
+   - Verify scanning card is detected
+   - Verify scan function is enabled
+   - Check for any error messages after commands
 
 ## Contact Information
 
@@ -239,5 +298,25 @@ If the issue persists after trying all diagnostic steps, please contact:
 
 ---
 
-**Last Updated:** 2026-01-16
-**Status:** Added 1-second delay between channel configurations. Awaiting user testing feedback.
+**Last Updated:** 2026-01-20
+**Status:** ✅ **FIXED** - 200mV range mapping corrected from "200mV" to "200MLV"
+
+**Changes Made:**
+1. Fixed `RANGE_TO_SCPI` mapping in `hardware/visa_interface.py`:
+   - Changed `"200 mV": "200mV"` to `"200 mV": "200MLV"`
+   - The correct SCPI command for 200 millivolt range is "200MLV" (millivolts), not "200mV"
+
+2. Added diagnostic logging to `connect()` method:
+   - Step 6: Check for scanning card presence (`:ROUT:STATe?`)
+   - Step 7: Check scan function status (`:ROUT:SCAN?`)
+   - Added `_has_scanning_card` attribute
+
+3. Added error checking after each command using `_check_and_log_errors()`:
+   - Queries `:SYST:ERR?` after operations
+   - Only logs actual errors (code != 0)
+   - Reads up to 5 errors from error queue
+   - Applied to all key commands
+
+4. Added scan status verification after enabling scan mode
+
+5. Removed 1-second debug pause from `configure_all_scan_channels()` method
