@@ -1,11 +1,12 @@
 """
 Main application window for SDM4055A-SC multimeter controller.
 """
+import csv
 import logging
 import os
 import re
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from PySide6.QtCore import QObject, Signal, Slot
 from PySide6.QtGui import QAction
@@ -544,11 +545,39 @@ class MainWindow(QMainWindow):
         """
         logger.info(f"Single scan complete. Measurements: {measurements}")
 
+        # Check if serial number is provided
+        serial_number = self.serial_number_input.text().strip()
+        if not serial_number:
+            QMessageBox.warning(
+                self,
+                "Missing Serial Number",
+                "Please enter a serial number before scanning.\n"
+                "The serial number is required for the report."
+            )
+            self.lbl_scan_status.setText("Scan complete - missing serial number")
+            logger.warning("Scan complete but no serial number provided")
+            return
+
+        # Validate serial number format
+        pattern = r'^PSN\d{9}$'
+        if not re.match(pattern, serial_number):
+            QMessageBox.warning(
+                self,
+                "Invalid Serial Number",
+                "Please enter a valid serial number in format PSN123456789.\n"
+                "The serial number must start with PSN followed by exactly 9 digits."
+            )
+            self.lbl_scan_status.setText("Scan complete - invalid serial number")
+            logger.warning(f"Scan complete but invalid serial number format: {serial_number}")
+            return
+
+        logger.info(f"Serial number validated: {serial_number}")
+
         # Update all channel indicators with new measurements
         for channel_num, result in measurements.items():
             if 1 <= channel_num <= 16:
                 indicator = self.channel_indicators[channel_num - 1]
-                
+
                 if result is None:
                     # No data available for this channel
                     indicator.set_status("No data", error=True)
@@ -558,6 +587,10 @@ class MainWindow(QMainWindow):
                 else:
                     # Valid measurement - update with value and unit
                     indicator.set_value(result.value, result.unit)
+
+        # Write to report file
+        logger.info("Writing measurements to report file...")
+        self._write_report_row(serial_number, measurements)
 
         # Update status
         self.lbl_scan_status.setText(
@@ -770,20 +803,26 @@ class MainWindow(QMainWindow):
 
     def _on_serial_number_changed(self, text: str) -> None:
         """Handle serial number input text change.
-        
+
         Args:
             text: Current text in the serial number input field.
         """
         # Validate serial number format: PSN followed by exactly 9 digits
         pattern = r'^PSN\d{9}$'
-        
+
         if text == "":
             # Empty input - use default color
             self.serial_number_input.setStyleSheet("")
         elif re.match(pattern, text):
-            # Valid format - white color
-            self.serial_number_input.setStyleSheet("color: white;")
-            logger.debug(f"Valid serial number: {text}")
+            # Valid format - check if it exists in report
+            if self._check_serial_in_report(text):
+                # Serial number exists in report - green color
+                self.serial_number_input.setStyleSheet("color: #51cf66; font-weight: bold;")
+                logger.debug(f"Valid serial number (exists in report): {text}")
+            else:
+                # Serial number doesn't exist - white color
+                self.serial_number_input.setStyleSheet("color: white;")
+                logger.debug(f"Valid serial number (new): {text}")
         else:
             # Invalid format - red color
             self.serial_number_input.setStyleSheet("color: red;")
@@ -873,3 +912,247 @@ class MainWindow(QMainWindow):
         else:
             # No config file loaded, use default name
             return f"report_{current_date}.csv"
+
+    def _check_serial_in_report(self, serial_number: str) -> bool:
+        """Check if serial number already exists in report file.
+
+        Args:
+            serial_number: Serial number to check
+
+        Returns:
+            True if serial number exists in report, False otherwise
+        """
+        logger.info(f"Checking if serial number '{serial_number}' exists in report file...")
+
+        if not self._report_file_path:
+            logger.info("No report file path set")
+            return False
+
+        if not os.path.exists(self._report_file_path):
+            logger.info(f"Report file does not exist: {self._report_file_path}")
+            return False
+
+        try:
+            with open(self._report_file_path, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.reader(f, delimiter=';')
+                for row in reader:
+                    if row and row[0] == serial_number:
+                        logger.info(f"Serial number '{serial_number}' found in report")
+                        return True
+            logger.info(f"Serial number '{serial_number}' not found in report")
+            return False
+        except Exception as e:
+            logger.error(f"Error checking serial number in report: {e}")
+            return False
+
+    def _validate_measurements(self, measurements: Dict[int, Optional[ScanDataResult]]) -> Tuple[bool, str]:
+        """Validate measurements against configured thresholds.
+
+        Args:
+            measurements: Dictionary of channel measurements
+
+        Returns:
+            Tuple of (is_valid, result_string) where:
+            - is_valid: True if all measurements are within thresholds
+            - result_string: "OK" if valid, "FAILED <details>" if invalid
+        """
+        logger.info("Validating measurements against thresholds...")
+
+        configs = self.config_loader.get_all_configs()
+        failed_channels = []
+
+        for channel_num, result in measurements.items():
+            # Only check channels 1-12 (voltage channels)
+            if channel_num < 1 or channel_num > 12:
+                logger.debug(f"Skipping channel {channel_num} (not in range 1-12)")
+                continue
+
+            if result is None:
+                logger.debug(f"Channel {channel_num}: No measurement data")
+                continue
+
+            if result.unit == "OVERLOAD":
+                logger.debug(f"Channel {channel_num}: OVERLOAD condition")
+                continue
+
+            config = configs.get(channel_num)
+            if config is None:
+                logger.debug(f"Channel {channel_num}: No configuration")
+                continue
+
+            # Check if thresholds are configured
+            if config.lower_threshold is not None and config.upper_threshold is not None:
+                if result.value < config.lower_threshold or result.value > config.upper_threshold:
+                    failed_channels.append(
+                        f"Voltage{channel_num}: {result.value:.7f} "
+                        f"(expected: {config.lower_threshold} - {config.upper_threshold})"
+                    )
+                    logger.warning(
+                        f"Channel {channel_num} FAILED: value={result.value:.7f}, "
+                        f"thresholds=[{config.lower_threshold}, {config.upper_threshold}]"
+                    )
+                else:
+                    logger.debug(f"Channel {channel_num} OK: value={result.value:.7f}")
+            elif config.lower_threshold is not None:
+                if result.value < config.lower_threshold:
+                    failed_channels.append(
+                        f"Voltage{channel_num}: {result.value:.7f} "
+                        f"(expected >= {config.lower_threshold})"
+                    )
+                    logger.warning(
+                        f"Channel {channel_num} FAILED: value={result.value:.7f}, "
+                        f"lower_threshold={config.lower_threshold}"
+                    )
+                else:
+                    logger.debug(f"Channel {channel_num} OK: value={result.value:.7f}")
+            elif config.upper_threshold is not None:
+                if result.value > config.upper_threshold:
+                    failed_channels.append(
+                        f"Voltage{channel_num}: {result.value:.7f} "
+                        f"(expected <= {config.upper_threshold})"
+                    )
+                    logger.warning(
+                        f"Channel {channel_num} FAILED: value={result.value:.7f}, "
+                        f"upper_threshold={config.upper_threshold}"
+                    )
+                else:
+                    logger.debug(f"Channel {channel_num} OK: value={result.value:.7f}")
+            else:
+                logger.debug(f"Channel {channel_num}: No thresholds configured")
+
+        if failed_channels:
+            result_string = "FAILED " + "; ".join(failed_channels)
+            logger.info(f"Validation FAILED: {result_string}")
+            return False, result_string
+        else:
+            logger.info("Validation OK: All measurements within thresholds")
+            return True, ""
+
+    def _write_report_row(self, serial_number: str, measurements: Dict[int, Optional[ScanDataResult]]) -> None:
+        """Write or update a row in the report file.
+
+        Args:
+            serial_number: Serial number from input field
+            measurements: Dictionary of channel measurements
+        """
+        logger.info("=" * 60)
+        logger.info("STARTING REPORT FILE WRITE OPERATION")
+        logger.info("=" * 60)
+
+        # Check if report file path is set
+        if not self._report_file_path:
+            logger.warning("No report file selected, skipping report write")
+            logger.info("=" * 60)
+            return
+
+        logger.info(f"Report file path: {self._report_file_path}")
+        logger.info(f"Serial number: {serial_number}")
+        logger.info(f"Number of measurements: {len(measurements)}")
+
+        # Validate measurements and get result string
+        logger.info("Validating measurements against thresholds...")
+        is_valid, result_string = self._validate_measurements(measurements)
+        logger.info(f"Validation result: {'OK' if is_valid else 'FAILED'}")
+        logger.info(f"Result string: {result_string}")
+
+        # Build row data: [serial_number, result_string]
+        row_data = [serial_number, result_string]
+        logger.info(f"Building row data. Initial columns: {row_data}")
+
+        # Add voltage measurements for channels 1-12
+        configs = self.config_loader.get_all_configs()
+        logger.info(f"Loaded {len(configs)} channel configurations")
+
+        for channel_num in range(1, 13):
+            result = measurements.get(channel_num)
+            config = configs.get(channel_num)
+
+            if result is None or result.unit == "OVERLOAD":
+                row_data.append("")
+                logger.debug(f"Channel {channel_num}: No data or OVERLOAD, adding empty cell")
+            elif config is None:
+                row_data.append("")
+                logger.debug(f"Channel {channel_num}: No configuration, adding empty cell")
+            else:
+                row_data.append(f"{result.value:.7f}")
+                logger.debug(f"Channel {channel_num}: {result.value:.7f} {result.unit}")
+
+        # Add current date and time
+        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        row_data.append(current_datetime)
+        logger.info(f"Date/Time: {current_datetime}")
+        logger.info(f"Final row data: {row_data}")
+        logger.info(f"Total columns in row: {len(row_data)}")
+
+        # Read existing rows
+        rows = []
+        file_exists = os.path.exists(self._report_file_path)
+        logger.info(f"File exists: {file_exists}")
+
+        if file_exists:
+            logger.info("Reading existing file content...")
+            try:
+                with open(self._report_file_path, 'r', newline='', encoding='utf-8') as f:
+                    reader = csv.reader(f, delimiter=';')
+                    rows = list(reader)
+                logger.info(f"Read {len(rows)} rows from file")
+                if rows:
+                    logger.info(f"First row (header?): {rows[0]}")
+            except Exception as e:
+                logger.error(f"Error reading report file: {e}")
+                logger.exception("Full exception details:")
+                rows = []
+        else:
+            logger.info("File does not exist, will create new file")
+
+        # Check if header exists, add if not
+        has_header = False
+        if rows:
+            has_header = rows[0][0] == "QR"
+            logger.info(f"Has valid header: {has_header}")
+
+        if not has_header:
+            logger.info("Adding header row...")
+            header = ["QR", "TEST RESULT"]
+            for i in range(1, 13):
+                header.append(f"Voltage{i}")
+            header.append("Date/Time")
+            rows.insert(0, header)
+            logger.info(f"Header: {header}")
+
+        # Find and update or append row
+        row_found = False
+        logger.info(f"Searching for existing row with serial number '{serial_number}'...")
+        for i, row in enumerate(rows):
+            if row and row[0] == serial_number:
+                logger.info(f"Found existing row at index {i}")
+                logger.info(f"Old row: {row}")
+                rows[i] = row_data
+                row_found = True
+                logger.info(f"Updated row: {row_data}")
+                break
+
+        if not row_found:
+            logger.info("No existing row found, appending new row...")
+            rows.append(row_data)
+            logger.info(f"Appended row: {row_data}")
+
+        logger.info(f"Total rows to write: {len(rows)}")
+
+        # Write back to file
+        logger.info(f"Opening file for writing: {self._report_file_path}")
+        try:
+            with open(self._report_file_path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f, delimiter=';')
+                writer.writerows(rows)
+            logger.info(f"Report file updated successfully: {self._report_file_path}")
+            logger.info("=" * 60)
+        except Exception as e:
+            logger.error(f"Error writing report file: {e}")
+            logger.exception("Full exception details:")
+            QMessageBox.critical(
+                self,
+                "Report File Error",
+                f"Failed to write to report file:\n{str(e)}"
+            )
+            logger.info("=" * 60)

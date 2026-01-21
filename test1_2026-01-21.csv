@@ -1,0 +1,2 @@
+QR;TEST RESULT;Voltage1;Voltage2;Voltage3;Voltage4;Voltage5;Voltage6;Voltage7;Voltage8;Voltage9;Voltage10;Voltage11;Voltage12;Date/Time
+PSN000001445;"FAILED Voltage1: 0.1560812 (expected: 150.0 - 180.0); Voltage2: -0.0003749 (expected: 2.0 - 2.1); Voltage3: -0.0003846 (expected: 2.0 - 2.1); Voltage4: -0.0003783 (expected: 2.0 - 2.1); Voltage6: -0.0003792 (expected: 2.1 - 2.2); Voltage7: -0.0003738 (expected: 1.0 - 1.1)";0.1560812;-0.0003749;-0.0003846;-0.0003783;;-0.0003792;-0.0003738;;;;;;2026-01-21 18:08:04
