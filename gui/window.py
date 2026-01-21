@@ -2,7 +2,9 @@
 Main application window for SDM4055A-SC multimeter controller.
 """
 import logging
+import os
 import re
+from datetime import datetime
 from typing import Dict, List, Optional
 
 from PySide6.QtCore import QObject, Signal, Slot
@@ -77,6 +79,9 @@ class MainWindow(QMainWindow):
 
         # Configuration loader
         self.config_loader = ConfigLoader()
+
+        # Report file path for saving measurements
+        self._report_file_path: Optional[str] = None
 
         # Setup UI
         self._setup_ui()
@@ -179,6 +184,19 @@ class MainWindow(QMainWindow):
         
         scan_layout.addWidget(self.btn_load_config)
         scan_layout.addWidget(self.lbl_config_file)
+        scan_layout.addSpacing(20)
+
+        # Report file section
+        self.btn_select_report_file = QPushButton("Select Report File")
+        self.btn_select_report_file.clicked.connect(self._on_select_report_file)
+        self.btn_new_report_file = QPushButton("New Report File")
+        self.btn_new_report_file.clicked.connect(self._on_new_report_file)
+        self.lbl_report_file = QLabel("No report file selected")
+        self.lbl_report_file.setStyleSheet("color: #888; font-style: italic;")
+
+        scan_layout.addWidget(self.btn_select_report_file)
+        scan_layout.addWidget(self.btn_new_report_file)
+        scan_layout.addWidget(self.lbl_report_file)
         scan_layout.addStretch()
 
         scan_group.setLayout(scan_layout)
@@ -770,3 +788,88 @@ class MainWindow(QMainWindow):
             # Invalid format - red color
             self.serial_number_input.setStyleSheet("color: red;")
             logger.debug(f"Invalid serial number: {text}")
+
+    def _on_select_report_file(self) -> None:
+        """Handle select report file button click."""
+        # Open file dialog to select existing CSV file
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Report File",
+            "",
+            "CSV Files (*.csv);;All Files (*)"
+        )
+        
+        if not file_path:
+            return  # User cancelled
+        
+        # Store the selected file path
+        self._report_file_path = file_path
+        
+        # Update the label to show the filename
+        filename = os.path.basename(file_path)
+        self.lbl_report_file.setText(filename)
+        self.lbl_report_file.setStyleSheet("color: #51cf66; font-weight: bold;")
+        
+        self.status_updated.emit(f"Report file selected: {filename}")
+        logger.info(f"Report file selected: {file_path}")
+
+    def _on_new_report_file(self) -> None:
+        """Handle new report file button click."""
+        # Generate filename based on config file and current date
+        filename = self._generate_report_filename()
+        
+        # Open file dialog to save new CSV file
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Create New Report File",
+            filename,
+            "CSV Files (*.csv);;All Files (*)"
+        )
+        
+        if not file_path:
+            return  # User cancelled
+        
+        # Create empty file
+        try:
+            with open(file_path, 'w', newline='') as f:
+                # Create empty CSV file (content will be added later)
+                pass
+            
+            # Store the file path
+            self._report_file_path = file_path
+            
+            # Update the label to show the filename
+            filename = os.path.basename(file_path)
+            self.lbl_report_file.setText(filename)
+            self.lbl_report_file.setStyleSheet("color: #51cf66; font-weight: bold;")
+            
+            self.status_updated.emit(f"New report file created: {filename}")
+            logger.info(f"New report file created: {file_path}")
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "File Error",
+                f"Failed to create report file:\n{str(e)}"
+            )
+            logger.error(f"Failed to create report file: {str(e)}")
+
+    def _generate_report_filename(self) -> str:
+        """Generate report filename based on config file and current date.
+        
+        Returns:
+            Generated filename in format: <config_name>_<YYYY-MM-DD>.csv or report_<YYYY-MM-DD>.csv
+        """
+        # Get current date in YYYY-MM-DD format
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        
+        # Get config file name if available
+        config_name = self.config_loader.get_config_file_name()
+        
+        if config_name and config_name != "No config loaded":
+            # Remove .csv extension from config name
+            if config_name.endswith('.csv'):
+                config_name = config_name[:-4]
+            return f"{config_name}_{current_date}.csv"
+        else:
+            # No config file loaded, use default name
+            return f"report_{current_date}.csv"

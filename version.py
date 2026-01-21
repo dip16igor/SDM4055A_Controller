@@ -10,4 +10,4 @@ Example: 1.0.0
 - PATCH: Backwards-compatible bug fixes
 """
 
-__version__ = "1.0.1"
+__version__ = "1.2.0"
