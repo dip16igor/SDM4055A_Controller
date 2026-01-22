@@ -1029,8 +1029,12 @@ class MainWindow(QMainWindow):
             # Check if thresholds are configured
             if config.lower_threshold is not None and config.upper_threshold is not None:
                 if result.value < config.lower_threshold or result.value > config.upper_threshold:
+                    # Build channel identifier with custom name if available
+                    channel_id = f"CH{channel_num}"
+                    if config.name:
+                        channel_id = f"CH{channel_num} ({config.name})"
                     failed_channels.append(
-                        f"Voltage{channel_num}: {result.value:.7f} "
+                        f"{channel_id}: {result.value:.7f} "
                         f"(expected: {config.lower_threshold} - {config.upper_threshold})"
                     )
                     logger.warning(
@@ -1041,8 +1045,12 @@ class MainWindow(QMainWindow):
                     logger.debug(f"Channel {channel_num} OK: value={result.value:.7f}")
             elif config.lower_threshold is not None:
                 if result.value < config.lower_threshold:
+                    # Build channel identifier with custom name if available
+                    channel_id = f"CH{channel_num}"
+                    if config.name:
+                        channel_id = f"CH{channel_num} ({config.name})"
                     failed_channels.append(
-                        f"Voltage{channel_num}: {result.value:.7f} "
+                        f"{channel_id}: {result.value:.7f} "
                         f"(expected >= {config.lower_threshold})"
                     )
                     logger.warning(
@@ -1053,8 +1061,12 @@ class MainWindow(QMainWindow):
                     logger.debug(f"Channel {channel_num} OK: value={result.value:.7f}")
             elif config.upper_threshold is not None:
                 if result.value > config.upper_threshold:
+                    # Build channel identifier with custom name if available
+                    channel_id = f"CH{channel_num}"
+                    if config.name:
+                        channel_id = f"CH{channel_num} ({config.name})"
                     failed_channels.append(
-                        f"Voltage{channel_num}: {result.value:.7f} "
+                        f"{channel_id}: {result.value:.7f} "
                         f"(expected <= {config.upper_threshold})"
                     )
                     logger.warning(
@@ -1165,11 +1177,11 @@ class MainWindow(QMainWindow):
             for i in range(1, 13):
                 config = configs.get(i)
                 if config and config.name:
-                    # Use custom name if configured
-                    header.append(config.name)
+                    # Use custom name if configured: "CH1 (custom_name)"
+                    header.append(f"CH{i} ({config.name})")
                 else:
-                    # Use generic name if no custom name
-                    header.append(f"Voltage{i}")
+                    # Use generic name if no custom name: "CH1"
+                    header.append(f"CH{i}")
             header.append("Date/Time")
             rows.insert(0, header)
             logger.info(f"Header: {header}")
