@@ -592,6 +592,15 @@ class MainWindow(QMainWindow):
         logger.info("Writing measurements to report file...")
         self._write_report_row(serial_number, measurements)
 
+        # Check if serial number exists in report and update color
+        logger.info("Checking serial number in report after write...")
+        if self._check_serial_in_report(serial_number):
+            self.serial_number_input.setStyleSheet("color: #51cf66; font-weight: bold;")
+            logger.info(f"Serial number '{serial_number}' confirmed in report, set green color")
+        else:
+            self.serial_number_input.setStyleSheet("color: white;")
+            logger.info(f"Serial number '{serial_number}' not found in report, set white color")
+
         # Update status
         self.lbl_scan_status.setText(
             f"Scan complete - {len(measurements)} channels")
