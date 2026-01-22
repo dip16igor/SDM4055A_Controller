@@ -174,6 +174,61 @@ The device communicates via USB using VISA protocol, which is an industry standa
   - Data file inclusion: `gui`, `hardware` directories
   - Standalone Windows executable output
 
+## Recent Changes (2026-01-22)
+
+### New Features
+1. **Measurement Report File Controls**
+    - Added "Select Report File" button to choose existing CSV report file
+    - Added "New Report File" button to create new CSV report file with auto-generated name
+    - Added report filename label displaying currently selected report file
+    - Auto-generated filename format:
+      - `<config_name>_<YYYY-MM-DD>.csv` when config file is loaded
+      - `report_<YYYY-MM-DD>.csv` when no config file loaded
+    - Report file format (CSV with semicolon delimiter):
+      - Column 1 (QR): Serial number from Serial Number input field
+      - Column 2 (TEST RESULT): "OK" or "FAILED <details>"
+      - Columns 3-14 (Voltage1-12): Voltage measurements for channels 1-12 only
+      - Column 15 (Date/Time): Current timestamp
+    - Automatic report row creation/update on single scan:
+      - Validates serial number format (PSN + 9 digits) before scanning
+      - Shows error if serial number is missing or invalid
+      - Validates measurements against configured thresholds
+      - Writes new row if serial number doesn't exist
+      - Updates existing row if serial number already exists
+      - Adds header row automatically if file is empty
+    - Serial number input field color coding:
+      - Red: Invalid format (not PSN + 9 digits)
+      - White: Valid format, but number not in report yet
+      - Green: Valid format and number already exists in report
+    - Click-to-clear functionality: Clicking on serial number input field clears text for new entry
+    - Comprehensive logging for debugging report file operations
+
+### Modified Files
+- **gui/window.py**:
+  - Added `csv` module import for CSV file handling
+  - Added `Tuple` type hint from typing module
+  - Added `Qt` and `QMouseEvent` imports for custom line edit
+  - Created `ClickToClearLineEdit` custom class for serial number input
+  - Added `_report_file_path` instance variable to store selected report file path
+  - Created `btn_select_report_file` QPushButton
+  - Created `btn_new_report_file` QPushButton
+  - Created `lbl_report_file` QLabel for displaying filename
+  - Implemented `_on_select_report_file()` method to select existing report file
+  - Implemented `_on_new_report_file()` method to create new report file
+  - Implemented `_generate_report_filename()` method for auto-generating filenames
+  - Implemented `_check_serial_in_report()` method to check if serial number exists
+  - Implemented `_validate_measurements()` method to validate against thresholds
+  - Implemented `_write_report_row()` method to write/update report rows
+  - Updated `_on_single_scan_complete()` to:
+    - Validate serial number is not empty
+    - Validate serial number format
+    - Call `_write_report_row()` to save measurements
+    - Check serial number in report and update color after write
+  - Updated `_on_serial_number_changed()` to check if serial number exists in report
+
+### Archived Proposals
+- **add-measurement-report-file-controls** → archived in `openspec/changes/archive/2026-01-22-add-measurement-report-file-controls/`
+
 ## Recent Changes (2026-01-21)
 
 ### New Features

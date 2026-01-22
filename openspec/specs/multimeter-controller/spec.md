@@ -291,3 +291,189 @@ The system SHALL read measurement data from multiple channels of the SDM4055A-SC
 #### Scenario: Read during disconnection
 - **WHEN** device is disconnected and polling timer attempts to read
 - **THEN** system handles error gracefully and displays connection status
+ 
+
+### Requirement: Report File Selection
+The system SHALL provide functionality to select an existing CSV report file for saving measurement results.
+
+#### Scenario: Select existing report file
+- **WHEN** user clicks "Select Report File" button
+- **THEN** file dialog opens allowing user to select CSV files
+- **AND** selected file path is stored for subsequent operations
+- **AND** filename is displayed in UI with green color
+
+#### Scenario: Report file not selected
+- **WHEN** no report file has been selected
+- **THEN** label displays "No report file selected" in gray italic text
+
+### Requirement: New Report File Creation
+The system SHALL provide functionality to create a new CSV report file with auto-generated filename.
+
+#### Scenario: Create new report file with config loaded
+- **WHEN** user clicks "New Report File" button and config file is loaded
+- **THEN** file dialog opens with suggested filename: `<config_name>_<YYYY-MM-DD>.csv`
+- **AND** user can save to any location
+- **AND** empty CSV file is created
+- **AND** filename is displayed in UI with green color
+
+#### Scenario: Create new report file without config
+- **WHEN** user clicks "New Report File" button and no config file is loaded
+- **THEN** file dialog opens with suggested filename: `report_<YYYY-MM-DD>.csv`
+- **AND** user can save to any location
+- **AND** empty CSV file is created
+- **AND** filename is displayed in UI with green color
+
+#### Scenario: Cancel new report file creation
+- **WHEN** user cancels file dialog
+- **THEN** no file is created
+- **AND** no changes are made to UI
+
+### Requirement: Report File Format
+The system SHALL write measurement results to CSV file with semicolon delimiter and specific column structure.
+
+#### Scenario: Report file header
+- **WHEN** report file is created or first row is written
+- **THEN** header row contains: "QR", "TEST RESULT", "Voltage1" through "Voltage12", "Date/Time"
+
+#### Scenario: Report data row format
+- **WHEN** measurement results are written to report file
+- **THEN** row contains:
+  - Column 1: Serial number from Serial Number input field
+  - Column 2: "OK" if all measurements within thresholds, "FAILED <details>" otherwise
+  - Columns 3-14: Voltage measurements for channels 1-12 (empty for channels 13-16)
+  - Column 15: Current timestamp in "YYYY-MM-DD HH:MM:SS" format
+
+#### Scenario: Only voltage channels in report
+- **WHEN** report row is written
+- **THEN** only channels 1-12 (voltage channels) are included in report
+- **AND** channels 13-16 (current channels) are not included
+
+### Requirement: Serial Number Validation Before Scan
+The system SHALL validate serial number format and presence before performing scan.
+
+#### Scenario: Scan with missing serial number
+- **WHEN** user clicks "Single Scan" with empty serial number field
+- **THEN** warning dialog is displayed requesting user to enter serial number
+- **AND** scan is not performed
+- **AND** status shows "Scan complete - missing serial number"
+
+#### Scenario: Scan with invalid serial number format
+- **WHEN** user clicks "Single Scan" with invalid serial number format
+- **THEN** warning dialog is displayed explaining required format (PSN + 9 digits)
+- **AND** scan is not performed
+- **AND** status shows "Scan complete - invalid serial number"
+
+#### Scenario: Scan with valid serial number
+- **WHEN** user clicks "Single Scan" with valid serial number (PSN + 9 digits)
+- **THEN** scan is performed normally
+- **AND** results are written to report file
+
+### Requirement: Measurement Validation Against Thresholds
+The system SHALL validate measurements against configured thresholds and generate appropriate result string.
+
+#### Scenario: All measurements within thresholds
+- **WHEN** all measured values are within configured thresholds
+- **THEN** TEST RESULT column contains "OK"
+- **AND** no failure details are included
+
+#### Scenario: Measurement below lower threshold
+- **WHEN** a measurement is below configured lower threshold
+- **THEN** TEST RESULT column contains "FAILED" with details
+- **AND** details include channel number, measured value, and expected range
+
+#### Scenario: Measurement above upper threshold
+- **WHEN** a measurement is above configured upper threshold
+- **THEN** TEST RESULT column contains "FAILED" with details
+- **AND** details include channel number, measured value, and expected range
+
+#### Scenario: Multiple measurements outside thresholds
+- **WHEN** multiple measurements are outside configured thresholds
+- **THEN** TEST RESULT column contains "FAILED" with all failed channels separated by semicolons
+
+#### Scenario: No thresholds configured
+- **WHEN** no thresholds are configured for any channel
+- **THEN** TEST RESULT column contains "OK" (no validation performed)
+
+### Requirement: Report Row Update
+The system SHALL update existing row if serial number already exists in report file, otherwise append new row.
+
+#### Scenario: New serial number
+- **WHEN** scan is performed with serial number not in report file
+- **THEN** new row is appended to report file
+- **AND** header row is added if file is empty
+
+#### Scenario: Existing serial number
+- **WHEN** scan is performed with serial number already in report file
+- **THEN** existing row is updated with new measurements
+- **AND** no duplicate rows are created
+
+#### Scenario: Empty report file
+- **WHEN** scan is performed on newly created report file
+- **THEN** header row is added automatically
+- **AND** data row is appended after header
+
+### Requirement: Serial Number Color Coding
+The system SHALL display serial number input field in different colors based on validation state and report file status.
+
+#### Scenario: Invalid format
+- **WHEN** serial number format is invalid
+- **THEN** input field text color is red
+
+#### Scenario: Valid format, not in report
+- **WHEN** serial number format is valid but number is not in report file
+- **THEN** input field text color is white
+
+#### Scenario: Valid format, in report
+- **WHEN** serial number format is valid and number exists in report file
+- **THEN** input field text color is green with bold font weight
+
+#### Scenario: Color update after scan
+- **WHEN** scan is performed and data is written to report file
+- **THEN** serial number input field color is updated to green
+- **AND** user can see that number is now in report
+
+### Requirement: Click-to-Clear Serial Number
+The system SHALL clear serial number input field when user clicks on it, allowing easy entry of new serial number.
+
+#### Scenario: Click on serial number field
+- **WHEN** user clicks on serial number input field
+- **THEN** existing text is cleared
+- **AND** cursor appears in field for new input
+- **AND** user can immediately type new serial number
+
+#### Scenario: Prevent repeated clearing
+- **WHEN** user clicks on serial number field multiple times without losing focus
+- **THEN** field is cleared only on first click
+- **AND** subsequent clicks do not clear text
+
+#### Scenario: Reset clear flag on focus loss
+- **WHEN** user clicks away from serial number field and then clicks back
+- **THEN** field can be cleared again on new click
+
+### Requirement: Report File Logging
+The system SHALL provide detailed logging for all report file operations to facilitate debugging.
+
+#### Scenario: Log report file selection
+- **WHEN** user selects a report file
+- **THEN** system logs file path and selection event
+
+#### Scenario: Log report file creation
+- **WHEN** user creates a new report file
+- **THEN** system logs file path and creation event
+
+#### Scenario: Log measurement validation
+- **WHEN** measurements are validated against thresholds
+- **THEN** system logs validation result and any failures
+
+#### Scenario: Log report row write
+- **WHEN** row is written to report file
+- **THEN** system logs:
+  - Serial number
+  - Number of measurements
+  - Validation result
+  - Whether row was updated or appended
+  - Total rows in file
+
+#### Scenario: Log errors
+- **WHEN** error occurs during report file operation
+- **THEN** system logs error details and exception traceback
