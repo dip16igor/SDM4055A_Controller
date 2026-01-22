@@ -8,8 +8,8 @@ import re
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-from PySide6.QtCore import QObject, Signal, Slot
-from PySide6.QtGui import QAction
+from PySide6.QtCore import QObject, Signal, Slot, Qt
+from PySide6.QtGui import QAction, QMouseEvent
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -35,6 +35,43 @@ from gui.widgets import ChannelIndicator
 from config import ConfigLoader, ChannelThresholdConfig
 
 logger = logging.getLogger(__name__)
+
+
+class ClickToClearLineEdit(QLineEdit):
+    """Custom QLineEdit that clears text when clicked."""
+
+    def __init__(self, parent=None):
+        """Initialize the custom line edit.
+
+        Args:
+            parent: Parent widget.
+        """
+        super().__init__(parent)
+        self._cleared_on_click = False
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        """Handle mouse press event to clear text on click.
+
+        Args:
+            event: Mouse event.
+        """
+        # Clear text on first click if not already cleared
+        if not self._cleared_on_click and event.button() == Qt.LeftButton:
+            self.clear()
+            self._cleared_on_click = True
+            logger.debug("Serial number field cleared on click")
+
+        # Call parent implementation
+        super().mousePressEvent(event)
+
+    def focusOutEvent(self, event) -> None:
+        """Handle focus out event to reset cleared state.
+
+        Args:
+            event: Focus event.
+        """
+        self._cleared_on_click = False
+        super().focusOutEvent(event)
 
 
 class MainWindow(QMainWindow):
@@ -146,7 +183,7 @@ class MainWindow(QMainWindow):
 
         # Serial number input section
         self.lbl_serial_number = QLabel("Serial Number:")
-        self.serial_number_input = QLineEdit()
+        self.serial_number_input = ClickToClearLineEdit()
         self.serial_number_input.setPlaceholderText("PSN123456789")
         self.serial_number_input.setMaximumWidth(150)
         self.serial_number_input.textChanged.connect(self._on_serial_number_changed)
