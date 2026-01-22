@@ -177,7 +177,19 @@ The device communicates via USB using VISA protocol, which is an industry standa
 ## Recent Changes (2026-01-22)
 
 ### New Features
-1. **Measurement Report File Controls**
+1. **Channel Custom Name Field**
+    - Added optional "Name" field to channel configuration CSV file
+    - Name field positioned between "channel" and "measurement_type" columns
+    - Custom names can be empty (optional field)
+    - CSV parser automatically strips whitespace from all fields
+    - Backward compatible with old configuration files (without Name column)
+    - Custom names are used in report file headers when available
+    - Report header format:
+      - Uses custom name if configured for channel
+      - Falls back to generic name (e.g., "Voltage1") if no custom name
+      - Supports mixed configuration (some channels with names, some without)
+
+2. **Measurement Report File Controls**
     - Added "Select Report File" button to choose existing CSV report file
     - Added "New Report File" button to create new CSV report file with auto-generated name
     - Added report filename label displaying currently selected report file
@@ -187,7 +199,7 @@ The device communicates via USB using VISA protocol, which is an industry standa
     - Report file format (CSV with semicolon delimiter):
       - Column 1 (QR): Serial number from Serial Number input field
       - Column 2 (TEST RESULT): "OK" or "FAILED <details>"
-      - Columns 3-14 (Voltage1-12): Voltage measurements for channels 1-12 only
+      - Columns 3-14: Custom channel names or "Voltage1-12" for channels 1-12 only
       - Column 15 (Date/Time): Current timestamp
     - Automatic report row creation/update on single scan:
       - Validates serial number format (PSN + 9 digits) before scanning
@@ -204,6 +216,13 @@ The device communicates via USB using VISA protocol, which is an industry standa
     - Comprehensive logging for debugging report file operations
 
 ### Modified Files
+- **config/config_loader.py**:
+  - Updated `ChannelThresholdConfig` dataclass to include `name` field
+  - Updated CSV parser to detect and handle optional "Name" column
+  - Added backward compatibility for configuration files without Name column
+  - Updated sample configuration file format to include Name field
+  - Updated docstring to document Name field support
+
 - **gui/window.py**:
   - Added `csv` module import for CSV file handling
   - Added `Tuple` type hint from typing module
@@ -219,6 +238,7 @@ The device communicates via USB using VISA protocol, which is an industry standa
   - Implemented `_check_serial_in_report()` method to check if serial number exists
   - Implemented `_validate_measurements()` method to validate against thresholds
   - Implemented `_write_report_row()` method to write/update report rows
+  - Updated `_write_report_row()` to use custom channel names in report headers
   - Updated `_on_single_scan_complete()` to:
     - Validate serial number is not empty
     - Validate serial number format
@@ -226,7 +246,12 @@ The device communicates via USB using VISA protocol, which is an industry standa
     - Check serial number in report and update color after write
   - Updated `_on_serial_number_changed()` to check if serial number exists in report
 
+- **openspec/specs/multimeter-controller/spec.md**:
+  - Updated "Report File Format" requirement to document custom name behavior
+  - Added scenarios for report headers with custom names, without custom names, and mixed configuration
+
 ### Archived Proposals
+- **add-channel-custom-name** → archived in `openspec/changes/archive/2026-01-22-add-channel-custom-name/`
 - **add-measurement-report-file-controls** → archived in `openspec/changes/archive/2026-01-22-add-measurement-report-file-controls/`
 
 ## Recent Changes (2026-01-21)

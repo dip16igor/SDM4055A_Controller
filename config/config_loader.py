@@ -3,6 +3,7 @@ Configuration file loader for SDM4055A-SC multimeter controller.
 
 Supports loading channel configurations from CSV files including:
 - Channel number
+- Custom name (optional)
 - Measurement type
 - Range (AUTO or specific value)
 - Lower threshold
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 class ChannelThresholdConfig:
     """Configuration for a single channel including thresholds."""
     channel_num: int
+    name: str  # Custom name for the channel (optional, can be empty)
     measurement_type: str
     range_value: str
     lower_threshold: Optional[float]
@@ -139,6 +141,9 @@ class ConfigLoader:
                 if not all(col in reader.fieldnames for col in required_columns):
                     return False, f"CSV must contain columns: {', '.join(required_columns)}"
                 
+                # Check if Name column exists (optional, for backward compatibility)
+                has_name_column = 'Name' in reader.fieldnames or 'name' in reader.fieldnames
+                
                 # Parse each row
                 for row_num, row in enumerate(reader, start=2):  # Start at 2 (row 1 is header)
                     try:
@@ -155,6 +160,11 @@ class ConfigLoader:
                         
                         if channel_num < 1 or channel_num > 16:
                             return False, f"Row {row_num}: Channel number must be between 1 and 16"
+                        
+                        # Parse custom name (optional, strip whitespace)
+                        name = ''
+                        if has_name_column:
+                            name = row.get('Name', row.get('name', '')).strip()
                         
                         # Parse measurement type
                         measurement_type = row.get('measurement_type', '').strip().upper()
@@ -217,6 +227,7 @@ class ConfigLoader:
                         # Create configuration
                         config = ChannelThresholdConfig(
                             channel_num=channel_num,
+                            name=name,
                             measurement_type=measurement_type,
                             range_value=range_value,
                             lower_threshold=lower_threshold,
@@ -301,10 +312,11 @@ class ConfigLoader:
         try:
             sample_content = """# SDM4055A-SC Channel Configuration File
 # 
-# Format: channel,measurement_type,range,lower_threshold,upper_threshold
+# Format: channel,Name,measurement_type,range,lower_threshold,upper_threshold
 #
 # Columns:
 #   channel: Channel number (1-16)
+#   Name: Custom name for the channel (optional, can be empty)
 #   measurement_type: Measurement type (see valid types below)
 #   range: Measurement range (AUTO or specific value)
 #   lower_threshold: Optional lower threshold (leave empty for no threshold)
@@ -333,16 +345,18 @@ class ConfigLoader:
 #   - Values within thresholds display in GREEN
 #   - Values outside thresholds display in RED
 #   - You can configure only the channels you need
+#   - Custom names are optional and will be used in report headers
+#   - Whitespace around values is automatically stripped
 
 # Example configurations:
-channel,measurement_type,range,lower_threshold,upper_threshold
-1,VOLT:DC,AUTO,0,5
-2,VOLT:DC,200 mV,0,0.2
-3,VOLT:AC,AUTO,0,120
-4,RES,AUTO,0,1000
-5,CAP,AUTO,1e-6,100e-6
-13,CURR:DC,2 A,0,0.5
-14,CURR:DC,2 A,0,1.5
+channel,Name,measurement_type,range,lower_threshold,upper_threshold
+1,+3.3VD,VOLT:DC,AUTO,0,5
+2,+5/0VA,VOLT:DC,200 mV,0,0.2
+3,Test Point 3,VOLT:AC,AUTO,0,120
+4,,RES,AUTO,0,1000
+5,CAP Channel,CAP,AUTO,1e-6,100e-6
+13,Current 1,CURR:DC,2 A,0,0.5
+14,Current 2,CURR:DC,2 A,0,1.5
 """
             
             with open(file_path, 'w', encoding='utf-8') as f:

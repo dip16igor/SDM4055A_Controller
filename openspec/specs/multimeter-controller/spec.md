@@ -331,9 +331,19 @@ The system SHALL provide functionality to create a new CSV report file with auto
 ### Requirement: Report File Format
 The system SHALL write measurement results to CSV file with semicolon delimiter and specific column structure.
 
-#### Scenario: Report file header
-- **WHEN** report file is created or first row is written
+#### Scenario: Report file header with custom names
+- **WHEN** report file is created or first row is written and channels have custom names configured
+- **THEN** header row contains: "QR", "TEST RESULT", custom channel names for channels 1-12, "Date/Time"
+- **AND** custom names are used instead of generic "Voltage1", "Voltage2", etc.
+
+#### Scenario: Report file header without custom names
+- **WHEN** report file is created or first row is written and no custom names are configured
 - **THEN** header row contains: "QR", "TEST RESULT", "Voltage1" through "Voltage12", "Date/Time"
+
+#### Scenario: Report file header with mixed custom names
+- **WHEN** report file is created or first row is written and some channels have custom names while others do not
+- **THEN** header row uses custom names for channels that have them
+- **AND** uses generic names (e.g., "Voltage3") for channels without custom names
 
 #### Scenario: Report data row format
 - **WHEN** measurement results are written to report file

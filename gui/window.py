@@ -1160,8 +1160,16 @@ class MainWindow(QMainWindow):
         if not has_header:
             logger.info("Adding header row...")
             header = ["QR", "TEST RESULT"]
+            # Use custom names from channel config if available, otherwise use generic names
+            configs = self.config_loader.get_all_configs()
             for i in range(1, 13):
-                header.append(f"Voltage{i}")
+                config = configs.get(i)
+                if config and config.name:
+                    # Use custom name if configured
+                    header.append(config.name)
+                else:
+                    # Use generic name if no custom name
+                    header.append(f"Voltage{i}")
             header.append("Date/Time")
             rows.insert(0, header)
             logger.info(f"Header: {header}")

@@ -1,0 +1,77 @@
+# SDM4055A-SC Channel Configuration File
+# 
+# Format: channel,Name,measurement_type,range,lower_threshold,upper_threshold
+#
+# Columns:
+#   channel: Channel number (1-16)
+#   Name: Custom name for the channel (optional, can be empty)
+#   measurement_type: Measurement type (see valid types below)
+#   range: Measurement range (AUTO or specific value)
+#   lower_threshold: Optional lower threshold (leave empty for no threshold)
+#   upper_threshold: Optional upper threshold (leave empty for no threshold)
+#
+# Valid measurement types:
+#   VOLT:DC - DC Voltage (напряжение постоянного тока)
+#   VOLT:AC - AC Voltage (напряжение переменного тока)
+#   RES - 2-Wire Resistance (сопротивление 2-проводное)
+#   FRES - 4-Wire Resistance (сопротивление 4-проводное)
+#   CAP - Capacitance (ёмкость)
+#   FREQ - Frequency (частота)
+#   DIOD - Diode (диод)
+#   CONT - Continuity (прозвонка)
+#   TEMP:RTD - RTD Temperature (температура RTD)
+#   TEMP:THER - Thermocouple (термопара)
+#   CURR:DC - DC Current (ток постоянный) - channels 13-16 only
+#   CURR:AC - AC Current (ток переменный) - channels 13-16 only
+#
+# Valid ranges for VOLT:DC (напряжение постоянного тока):
+#   200 mV, 2 V, 20 V, 200 V, AUTO
+#
+# Valid ranges for VOLT:AC (напряжение переменного тока):
+#   200 mV, 2 V, 20 V, 200 V, AUTO
+#
+# Valid ranges for RES (сопротивление 2-проводное):
+#   200 Ohm, 2 kOhm, 20 kOhm, 200 kOhm, 2 MOhm, 10 MOhm, 100 MOhm, AUTO
+#
+# Valid ranges for FRES (сопротивление 4-проводное):
+#   200 Ohm, 2 kOhm, 20 kOhm, 200 kOhm, 2 MOhm, 10 MOhm, 100 MOhm, AUTO
+#
+# Valid ranges for CAP (ёмкость):
+#   2 nF, 20 nF, 200 nF, 2 uF, 20 uF, 200 uF, 10000 uF, AUTO
+#
+# Valid ranges for CURR:DC (ток постоянный):
+#   2 A (only this range is supported by CS1016 scanning card!)
+#
+# Valid ranges for CURR:AC (ток переменный):
+#   2 A (only this range is supported by CS1016 scanning card!)
+#
+# Notes:
+#   - Channels 1-12: Voltage, Resistance, Capacitance, etc.
+#   - Channels 13-16: Current measurements only (2A range ONLY)
+#   - CS1016 scanning card has DIFFERENT range limitations than multimeter itself!
+#   - See doc/CS1016_Supported_Ranges.md for detailed information
+#   - Thresholds are optional - leave empty if not needed
+#   - Values within thresholds display in GREEN
+#   - Values outside thresholds display in RED
+#   - You can configure only the channels you need
+#   - Custom names are optional and will be used in report headers
+#   - Whitespace around values is automatically stripped
+
+# Example configurations with custom names:
+channel,Name,measurement_type,range,lower_threshold,upper_threshold
+1,+3.3VD,VOLT:DC,200 mV,150,180
+2,+5.0VA,VOLT:DC,AUTO,2.0,2.1
+3,Test Point 3,VOLT:DC,AUTO,2.0,2.1
+4,,VOLT:DC,AUTO,2.0,2.1
+5,Capacitance Test,CAP,AUTO,1e-6,100e-6
+6,,VOLT:DC,AUTO,2.1,2.2
+7,,VOLT:DC,AUTO,1.0,1.1
+8,,VOLT:DC,AUTO,3.3,3.4
+9,,VOLT:DC,AUTO,5.0,5.1
+10,,VOLT:DC,AUTO,12.0,12.1
+11,,VOLT:DC,AUTO,24.0,24.1
+12,,VOLT:DC,AUTO,48.0,48.1
+13,Current 1,CURR:DC,2 A,0,0.5
+14,Current 2,CURR:DC,2 A,0,1.5
+15,Current 3,CURR:DC,2 A,0,2.0
+16,Current 4,CURR:DC,2 A,0,2.5
