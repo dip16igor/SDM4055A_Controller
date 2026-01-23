@@ -174,6 +174,58 @@ The device communicates via USB using VISA protocol, which is an industry standa
   - Data file inclusion: `gui`, `hardware` directories
   - Standalone Windows executable output
 
+## Recent Changes (2026-01-23)
+
+### New Features
+1. **Log Viewer Window**
+     - Added log viewer button in status bar (bottom left corner)
+     - Button positioned to the left of status text for easy access
+     - Created `QLogHandler` class for Qt signal-based logging
+     - Created `LogViewerWidget` class with color-coded log display
+     - Created `LogViewerDialog` class for log viewer window
+     - Real-time log streaming from Python logging system to GUI
+     - Color differentiation by log level:
+       - DEBUG: Gray (#888888)
+       - INFO: White (#ffffff)
+       - WARNING: Yellow/Gold (#ffd700)
+       - ERROR: Red (#ff6b6b)
+       - CRITICAL: Magenta (#ff00ff)
+     - Log filtering by severity level (All, DEBUG, INFO, WARNING, ERROR, CRITICAL)
+     - Auto-scroll toggle for automatic scrolling to new logs
+     - Clear logs button to reset log viewer
+     - Performance optimizations:
+       - Plain text rendering with QTextCharFormat instead of HTML
+       - Only appends new logs that match current filter
+       - Buffer limited to 1000 entries for memory management
+       - Separate filter change handler from log addition
+     - Window activation and focus management when showing log viewer
+
+### Modified Files
+- **gui/widgets.py**:
+   - Added `QLogHandler` class - Qt-based logging handler that emits signals
+   - Added `LogViewerWidget` class - Widget for displaying logs with color coding and filtering
+   - Added `LogViewerDialog` class - Dialog window for log viewer
+   - Implemented `_display_log_entry()` method using QTextCharFormat for fast rendering
+   - Implemented `_matches_filter()` method for log level filtering
+   - Implemented `_on_filter_changed()` method for re-rendering all logs when filter changes
+   - Implemented `_scroll_to_bottom()` method with QApplication.processEvents() for proper scrolling
+   - Implemented auto-scroll functionality in `add_log()` method
+
+- **gui/window.py**:
+   - Added `QCheckBox` and `QStyle` imports from PySide6.QtWidgets
+   - Added `LogViewerDialog` and `QLogHandler` imports from gui.widgets
+   - Added `_log_viewer_dialog` instance variable
+   - Created `btn_log_viewer` QPushButton in status bar with standard icon (SP_MessageBoxInformation)
+   - Implemented `_toggle_log_viewer()` method to show/hide log viewer window
+   - Added window activation and raising when showing log viewer
+   - Created and configured `QLogHandler` with formatter
+   - Added handler to root logger for global log capture
+   - Connected log handler to log viewer dialog when created
+   - Added log handler cleanup in `closeEvent()` method
+
+### Archived Proposals
+- **add-log-viewer-window** → archived in `openspec/changes/archive/2026-01-23-add-log-viewer-window/`
+
 ## Recent Changes (2026-01-22)
 
 ### New Features
