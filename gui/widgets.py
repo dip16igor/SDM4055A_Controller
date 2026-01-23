@@ -38,7 +38,7 @@ class DigitalIndicator(QWidget):
         self._setup_ui()
 
     def _setup_ui(self) -> None:
-        """Setup the widget's UI components."""
+        """Setup widget's UI components."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
@@ -189,18 +189,19 @@ class ChannelIndicator(QWidget):
         "200 V": 1,      # No conversion (V to V)
         # Current ranges (device returns A) - CS1016 only supports 2A
         "2 A": 1,         # No conversion (A to A)
-        # Capacitance ranges (device returns F) - CS1016 supports 10000 uF instead of 10 mF
+        # Capacitance ranges (device returns F) - CS1016 supports 10000 uF instead of 10 mF)
         "2 nF": 1e9,     # Convert F to nF (multiply by 1,000,000,000)
         "20 nF": 1e9,    # Convert F to nF (multiply by 1,000,000,000)
         "200 nF": 1e9,   # Convert F to nF (multiply by 1,000,000,000)
         "2 uF": 1e6,     # Convert F to uF (multiply by 1,000,000)
         "20 uF": 1e6,    # Convert F to uF (multiply by 1,000,000)
         "200 uF": 1e6,   # Convert F to uF (multiply by 1,000,000)
-        "10000 uF": 1e6,  # Convert F to uF (multiply by 1,000,000)
+        "10000 uF": 1e6, # Convert F to uF (multiply by 1,000,000)
         # Resistance ranges (device returns Ohm)
         "200 Ohm": 1,     # No conversion (Ohm to Ohm)
         "2 kOhm": 1e-3,  # Convert Ohm to kOhm (multiply by 0.001)
-        "20 kOhm": 1e-3, # Convert Ohm to kOhm (multiply by 0.001)
+        "20 kOhm": 1e-3,  # Convert Ohm to kOhm (multiply by 0.001)
+        "200 kOhm": 1e-3, # Convert Ohm to kOhm (multiply by 0.001)
         "200 kOhm": 1e-3, # Convert Ohm to kOhm (multiply by 0.001)
         "2 MOhm": 1e-6,  # Convert Ohm to MOhm (multiply by 0.000001)
         "10 MOhm": 1e-6,  # Convert Ohm to MOhm (multiply by 0.000001)
@@ -213,7 +214,7 @@ class ChannelIndicator(QWidget):
     VALID_RANGES = {
         # Voltage ranges - CS1016 only supports up to 200V (1000V and 750V are NOT supported)
         "VOLT:DC": ["200 mV", "2 V", "20 V", "200 V", "AUTO"],
-        "VOLT:AC": ["200 mV", "2 V", "20 V", "200 V", "AUTO"],
+        "VOLT:AC": ["200 mV", "2 V", "20 V", "AUTO"],
         # Current ranges - CS1016 ONLY supports 2A range (all other ranges are NOT supported)
         "CURR:DC": ["2 A"],  # Only 2A is supported by CS1016
         "CURR:AC": ["2 A"],  # Only 2A is supported by CS1016
@@ -222,7 +223,7 @@ class ChannelIndicator(QWidget):
         "FRES": ["200 Ohm", "2 kOhm", "20 kOhm", "200 kOhm", "2 MOhm", "10 MOhm", "100 MOhm", "AUTO"],
         # Capacitance ranges - 2mF, 20mF, 100mF are NOT supported on SDM4055A (only SDM3065X)
         # Use 10000 uF as alternative to 10 mF
-        "CAP": ["2 nF", "20 nF", "200 nF", "2 uF", "20 uF", "200 uF", "10000 uF", "AUTO"],
+        "CAP": ["2 nF", "20 nF", "200 nF", "2 uF", "20 uF", "10000 uF", "AUTO"],
     }
 
     def __init__(self, channel_num: int, parent=None):
@@ -255,7 +256,7 @@ class ChannelIndicator(QWidget):
         self._setup_ui()
 
     def _setup_ui(self) -> None:
-        """Setup the widget's UI components."""
+        """Setup widget's UI components."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(15, 15, 15, 15)
         layout.setSpacing(8)
@@ -394,7 +395,7 @@ class ChannelIndicator(QWidget):
             converted_value = value * conversion_factor
             self.value_label.setText(f"{converted_value:.6f} {self._unit}")
         else:
-            # For AUTO range, use the unit from the device response
+            # For AUTO range, use the unit from device response
             # The device returns the value in the unit it selected (e.g., mV, V, etc.)
             self.value_label.setText(f"{value:.6f} {self._unit}")
         
@@ -408,7 +409,6 @@ class ChannelIndicator(QWidget):
     def set_unit(self, unit: str) -> None:
         """
         Update the unit and refresh the value display.
-
         Args:
             unit: Unit string to display.
         """
@@ -419,36 +419,26 @@ class ChannelIndicator(QWidget):
     def set_status(self, status: str, error: bool = False) -> None:
         """
         Update the channel status (displayed in value label).
-
+        
         Args:
             status: Status text to display.
             error: If True, display status in red color.
         """
-        self.value_label.setText(status)
+        self.status_label.setText(status)
         if error:
-            self.value_label.setStyleSheet(f"""
-                color: #ff6b6b;
-                font-size: {self.VALUE_FONT_SIZE}pt;
-                font-weight: bold;
-                font-family: 'Consolas', 'Courier New', monospace;
-            """)
+            self.status_label.setStyleSheet("color: #ff6b6b;")
         else:
-            self.value_label.setStyleSheet(f"""
-                color: #51cf66;
-                font-size: {self.VALUE_FONT_SIZE}pt;
-                font-weight: bold;
-                font-family: 'Consolas', 'Courier New', monospace;
-            """)
+            self.status_label.setStyleSheet("color: #51cf66;")
 
     def reset_status(self) -> None:
         """Reset the value label to normal display."""
         self.value_label.setText(f"{self._value:.6f} {self._unit}")
         self.value_label.setStyleSheet(f"""
             font-size: {self.VALUE_FONT_SIZE}pt;
-            font-weight: bold;
-            font-family: 'Consolas', 'Courier New', monospace;
-        """)
-    
+                font-weight: bold;
+                font-family: 'Consolas', 'Courier New', monospace;
+            """)
+
     def set_thresholds(self, lower: Optional[float] = None, upper: Optional[float] = None) -> None:
         """
         Set threshold values for this channel.
@@ -467,7 +457,7 @@ class ChannelIndicator(QWidget):
         # Re-apply color coding if thresholds are enabled
         if self._thresholds_enabled:
             self._apply_threshold_color(self._value)
-    
+
     def clear_thresholds(self) -> None:
         """Clear threshold settings and reset color."""
         self._lower_threshold = None
@@ -475,9 +465,9 @@ class ChannelIndicator(QWidget):
         self._thresholds_enabled = False
         self.value_label.setStyleSheet("")
         self._update_thresholds_display()
-    
+
     def _update_thresholds_display(self) -> None:
-        """Update the thresholds label based on current threshold values."""
+        """Update thresholds label based on current threshold values."""
         if not self._thresholds_enabled:
             self.thresholds_label.setText("")
             return
@@ -493,7 +483,7 @@ class ChannelIndicator(QWidget):
             self.thresholds_label.setText(" | ".join(parts))
         else:
             self.thresholds_label.setText("")
-    
+
     def _apply_threshold_color(self, value: float = None, use_converted: bool = False) -> None:
         """
         Apply color based on threshold comparison.
@@ -537,7 +527,7 @@ class ChannelIndicator(QWidget):
     def get_measurement_type(self) -> str:
         """
         Get the currently selected measurement type.
-
+        
         Returns:
             Measurement type string (e.g., "VOLT:DC").
         """
@@ -545,8 +535,8 @@ class ChannelIndicator(QWidget):
 
     def get_range(self) -> str:
         """
-        Get currently selected range.
-
+        Get the currently selected range.
+        
         Returns:
             Range value string (e.g., "200 mV", "AUTO").
         """
@@ -555,7 +545,7 @@ class ChannelIndicator(QWidget):
     def set_range(self, range_value: str) -> None:
         """
         Set measurement range.
-
+        
         Args:
             range_value: Range value string (e.g., "200 mV", "AUTO").
         """
@@ -569,7 +559,7 @@ class ChannelIndicator(QWidget):
     def set_measurement_type(self, measurement_type: str) -> None:
         """
         Set the measurement type.
-
+        
         Args:
             measurement_type: Measurement type string (e.g., "VOLT:DC").
         """
@@ -580,11 +570,12 @@ class ChannelIndicator(QWidget):
             self._update_unit_for_measurement_type(measurement_type)
             # Update range dropdown options for this measurement type
             self._update_range_options(measurement_type)
+        self.measurement_type_changed.emit(self._channel_num, measurement_type)
 
     def _update_range_options(self, measurement_type: str) -> None:
         """
         Update range dropdown options based on the selected measurement type.
-
+        
         Args:
             measurement_type: Measurement type string.
         """
@@ -611,9 +602,9 @@ class ChannelIndicator(QWidget):
     def _update_unit_for_measurement_type(self, measurement_type: str) -> None:
         """
         Update the unit label based on the measurement type.
-
+        
         Args:
-            measurement_type: Measurement type string (e.g., "VOLT:DC").
+            measurement_type: Measurement type string.
         """
         # Get unit based on current range
         range_value = self.range_combo.currentData()
@@ -692,6 +683,7 @@ class QLogHandler(QObject, logging.Handler):
 class LogViewerWidget(QWidget):
     """
     Widget for displaying application logs with color coding and filtering.
+    Optimized for performance by only appending new logs.
     """
 
     # Log level colors (dark theme)
@@ -701,6 +693,15 @@ class LogViewerWidget(QWidget):
         "WARNING": "#ffd700",    # Yellow/Gold
         "ERROR": "#ff6b6b",     # Red
         "CRITICAL": "#ff00ff",   # Magenta
+    }
+
+    # Log level priority for filtering
+    LEVEL_PRIORITY = {
+        "DEBUG": 0,
+        "INFO": 1,
+        "WARNING": 2,
+        "ERROR": 3,
+        "CRITICAL": 4
     }
 
     def __init__(self, parent=None):
@@ -714,6 +715,7 @@ class LogViewerWidget(QWidget):
 
         self._auto_scroll = True
         self._log_buffer = []  # Store all logs for filtering
+        self._max_buffer_size = 1000  # Limit buffer size for performance
 
         # Setup UI
         self._setup_ui()
@@ -756,7 +758,8 @@ class LogViewerWidget(QWidget):
         # Filter dropdown
         self.combo_filter = QComboBox()
         self.combo_filter.addItems(["All", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
-        self.combo_filter.currentTextChanged.connect(self._apply_filter)
+        # Only re-render when filter changes, not when new logs are added
+        self.combo_filter.currentTextChanged.connect(self._on_filter_changed)
         self.combo_filter.setStyleSheet("""
             QComboBox {
                 background-color: #4d4d4d;
@@ -783,7 +786,7 @@ class LogViewerWidget(QWidget):
                 background-color: #4d4d4d;
                 color: #ffffff;
                 selection-background-color: #4a9eff;
-                border: 1px solid #5d5d5d;
+                border: 1px solid #4d4d4d;
             }
         """)
         toolbar_layout.addWidget(self.combo_filter)
@@ -860,7 +863,7 @@ class LogViewerWidget(QWidget):
 
     def add_log(self, timestamp: str, level: str, logger_name: str, message: str) -> None:
         """
-        Add a log entry to the viewer.
+        Add a log entry to the viewer (optimized - only appends if matches filter).
 
         Args:
             timestamp: Log timestamp string.
@@ -877,37 +880,43 @@ class LogViewerWidget(QWidget):
         }
         self._log_buffer.append(log_entry)
 
-        # Apply filter and display
-        self._apply_filter()
+        # Limit buffer size for performance
+        if len(self._log_buffer) > self._max_buffer_size:
+            self._log_buffer = self._log_buffer[-self._max_buffer_size:]
 
-    def _apply_filter(self) -> None:
-        """Apply current filter to log display."""
+        # Only append if matches current filter (optimized)
+        if self._matches_filter(level):
+            self._display_log_entry(log_entry)
+
+    def _matches_filter(self, level: str) -> bool:
+        """
+        Check if log level matches current filter.
+
+        Args:
+            level: Log level to check.
+
+        Returns:
+            True if log level matches filter, False otherwise.
+        """
+        filter_level = self.combo_filter.currentText()
+        if filter_level == "All":
+            return True
+        return self.LEVEL_PRIORITY.get(level, 0) >= self.LEVEL_PRIORITY.get(filter_level, 0)
+
+    def _on_filter_changed(self) -> None:
+        """Handle filter change - re-render all logs."""
         # Get current filter level
         filter_level = self.combo_filter.currentText()
 
         # Clear display
         self.text_logs.clear()
 
-        # Filter logs
-        filtered_logs = []
+        # Filter and display all logs
         for log_entry in self._log_buffer:
             if filter_level == "All":
-                filtered_logs.append(log_entry)
-            else:
-                # Show logs at or above selected level
-                level_priority = {
-                    "DEBUG": 0,
-                    "INFO": 1,
-                    "WARNING": 2,
-                    "ERROR": 3,
-                    "CRITICAL": 4
-                }
-                if level_priority.get(log_entry["level"], 0) >= level_priority.get(filter_level, 0):
-                    filtered_logs.append(log_entry)
-
-        # Display filtered logs
-        for log_entry in filtered_logs:
-            self._display_log_entry(log_entry)
+                self._display_log_entry(log_entry)
+            elif self.LEVEL_PRIORITY.get(log_entry["level"], 0) >= self.LEVEL_PRIORITY.get(filter_level, 0):
+                self._display_log_entry(log_entry)
 
         # Auto-scroll if enabled
         if self._auto_scroll:
@@ -915,7 +924,7 @@ class LogViewerWidget(QWidget):
 
     def _display_log_entry(self, log_entry: dict) -> None:
         """
-        Display a single log entry in the text area.
+        Display a single log entry in the text area (optimized - uses plain text).
 
         Args:
             log_entry: Dictionary containing timestamp, level, logger_name, and message.
@@ -931,10 +940,17 @@ class LogViewerWidget(QWidget):
         # Format log line
         log_line = f"[{timestamp}] {level:8} | {logger_name:20} | {message}"
 
-        # Append to text area with color
+        # Append to text area with color using text format (faster than HTML)
         cursor = self.text_logs.textCursor()
         cursor.movePosition(QTextCursor.End)
-        cursor.insertHtml(f'<span style="color: {color}">{log_line}</span><br>')
+
+        # Set color using QTextCharFormat (more efficient than HTML)
+        char_format = cursor.charFormat()
+        char_format.setForeground(QColor(color))
+        cursor.setCharFormat(char_format)
+
+        # Insert text
+        cursor.insertText(log_line + "\n")
 
     def _scroll_to_bottom(self) -> None:
         """Scroll to the bottom of the log viewer."""
