@@ -968,26 +968,213 @@ class LogViewerWidget(QWidget):
         self._log_buffer.clear()
         self.text_logs.clear()
 
+    def update_theme(self, theme: str) -> None:
+        """
+        Update widget theme.
+
+        Args:
+            theme: Theme string ("dark" or "light").
+        """
+        if theme == "dark":
+            # Dark theme colors
+            self.LOG_COLORS = {
+                "DEBUG": "#888888",      # Gray
+                "INFO": "#ffffff",       # White
+                "WARNING": "#ffd700",    # Yellow/Gold
+                "ERROR": "#ff6b6b",     # Red
+                "CRITICAL": "#ff00ff",   # Magenta
+            }
+            # Update text area background
+            self.text_logs.setStyleSheet("""
+                QTextEdit {
+                        background-color: #1e1e1e;
+                        color: #ffffff;
+                        border: 1px solid #3d3d3d;
+                        border-radius: 4px;
+                    }
+            """)
+            # Update toolbar elements
+            self.btn_clear.setStyleSheet("""
+                QPushButton {
+                        background-color: #4d4d4d;
+                        color: #ffffff;
+                        border: 1px solid #5d5d5d;
+                        border-radius: 4px;
+                        padding: 5px 15px;
+                    }
+                    QPushButton:hover {
+                        background-color: #5d5d5d;
+                    }
+                    QPushButton:pressed {
+                        background-color: #6d6d6d;
+                    }
+            """)
+            self.combo_filter.setStyleSheet("""
+                QComboBox {
+                        background-color: #4d4d4d;
+                        color: #ffffff;
+                        border: 1px solid #5d5d5d;
+                        border-radius: 4px;
+                        padding: 5px;
+                        min-height: 25px;
+                    }
+                    QComboBox:hover {
+                        background-color: #5d5d5d;
+                    }
+                    QComboBox::drop-down {
+                        border: none;
+                    }
+                    QComboBox::down-arrow {
+                        image: none;
+                        border-left: 5px solid transparent;
+                        border-right: 5px solid transparent;
+                        border-top: 5px solid #ffffff;
+                        margin-right: 5px;
+                    }
+                    QComboBox QAbstractItemView {
+                        background-color: #4d4d4d;
+                        color: #ffffff;
+                        selection-background-color: #4a9eff;
+                        border: 1px solid #4d4d4d;
+                    }
+            """)
+            self.chk_auto_scroll.setStyleSheet("""
+                QCheckBox {
+                        color: #ffffff;
+                    }
+                    QCheckBox::indicator {
+                        width: 18px;
+                        height: 18px;
+                        border: 1px solid #5d5d5d;
+                        border-radius: 3px;
+                        background-color: #4d4d4d;
+                    }
+                    QCheckBox::indicator:checked {
+                        background-color: #4a9eff;
+                        border: 1px solid #4a9eff;
+                    }
+                    QCheckBox::indicator:hover {
+                        border: 1px solid #6abeff;
+                    }
+            """)
+            self.filter_label.setStyleSheet("color: #ffffff;")
+        else:
+            # Light theme colors
+            self.LOG_COLORS = {
+                "DEBUG": "#666666",      # Darker gray for light theme
+                "INFO": "#000000",       # Black
+                "WARNING": "#d4a000",    # Dark orange/gold
+                "ERROR": "#d32f2f",     # Darker red
+                "CRITICAL": "#8b0000",   # Dark magenta
+            }
+            # Update text area background
+            self.text_logs.setStyleSheet("""
+                QTextEdit {
+                        background-color: #ffffff;
+                        color: #000000;
+                        border: 1px solid #d0d0d0;
+                        border-radius: 4px;
+                    }
+            """)
+            # Update toolbar elements
+            self.btn_clear.setStyleSheet("""
+                QPushButton {
+                        background-color: #e0e0e0;
+                        color: #000000;
+                        border: 1px solid #b0b0b0;
+                        border-radius: 4px;
+                        padding: 5px 15px;
+                    }
+                    QPushButton:hover {
+                        background-color: #f0f0f0;
+                    }
+                    QPushButton:pressed {
+                        background-color: #d0d0d0;
+                    }
+            """)
+            self.combo_filter.setStyleSheet("""
+                QComboBox {
+                        background-color: #e0e0e0;
+                        color: #000000;
+                        border: 1px solid #b0b0b0;
+                        border-radius: 4px;
+                        padding: 5px;
+                        min-height: 25px;
+                    }
+                    QComboBox:hover {
+                        background-color: #f0f0f0;
+                    }
+                    QComboBox::drop-down {
+                        border: none;
+                    }
+                    QComboBox::down-arrow {
+                        image: none;
+                        border-left: 5px solid transparent;
+                        border-right: 5px solid transparent;
+                        border-top: 5px solid #000000;
+                        margin-right: 5px;
+                    }
+                    QComboBox QAbstractItemView {
+                        background-color: #e0e0e0;
+                        color: #000000;
+                        selection-background-color: #4a9eff;
+                        border: 1px solid #b0b0b0;
+                    }
+            """)
+            self.chk_auto_scroll.setStyleSheet("""
+                QCheckBox {
+                        color: #000000;
+                    }
+                    QCheckBox::indicator {
+                        width: 18px;
+                        height: 18px;
+                        border: 1px solid #b0b0b0;
+                        border-radius: 3px;
+                        background-color: #e0e0e0;
+                    }
+                    QCheckBox::indicator:checked {
+                        background-color: #4a9eff;
+                        border: 1px solid #4a9eff;
+                    }
+                    QCheckBox::indicator:hover {
+                        border: 1px solid #6abeff;
+                    }
+            """)
+            self.filter_label.setStyleSheet("color: #000000;")
+
+    def _clear_logs(self) -> None:
+        """Clear all logs from the viewer."""
+        self._log_buffer.clear()
+        self.text_logs.clear()
+
 
 class LogViewerDialog(QDialog):
     """
     Dialog window for displaying application logs.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, theme_manager=None):
         """
         Initialize log viewer dialog.
 
         Args:
             parent: Parent widget.
+            theme_manager: ThemeManager instance for theme switching.
         """
         super().__init__(parent)
+
+        self._theme_manager = theme_manager
+        self._current_theme = "dark"  # Default theme
 
         self.setWindowTitle("Application Logs")
         self.resize(900, 600)
 
         # Setup UI
         self._setup_ui()
+
+        # Apply initial theme
+        if self._theme_manager:
+            self.update_theme(self._theme_manager.get_current_theme())
 
     def _setup_ui(self) -> None:
         """Setup dialog's UI components."""

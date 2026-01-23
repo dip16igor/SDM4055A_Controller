@@ -1,0 +1,42 @@
+## 1. Implementation
+- [ ] 1.1 Create theme management module in `gui/theme_manager.py`
+  - [ ] 1.1.1 Define ThemeManager class with methods to switch between themes
+  - [ ] 1.1.2 Implement theme persistence using QSettings to save user preference
+  - [ ] 1.1.3 Add methods to get current theme and apply theme to application
+- [ ] 1.2 Add theme toggle button to MainWindow status bar
+  - [ ] 1.2.1 Create QPushButton with appropriate icon (sun/moon)
+  - [ ] 1.2.2 Position button to the left of log viewer button using addPermanentWidget
+  - [ ] 1.2.3 Set button size to 30x30 pixels to match log viewer button
+  - [ ] 1.2.4 Add tooltip "Switch Theme"
+  - [ ] 1.2.5 Connect button click to theme toggle handler
+- [ ] 1.3 Implement theme toggle handler in MainWindow
+  - [ ] 1.3.1 Create _toggle_theme method to switch between dark and light themes
+  - [ ] 1.3.2 Apply qt-material dark_teal.xml or light_teal.xml theme based on current state
+  - [ ] 1.3.3 Update theme toggle button icon to reflect current theme (sun for light, moon for dark)
+  - [ ] 1.3.4 Save theme preference to QSettings
+- [ ] 1.4 Add theme support to LogViewerDialog
+  - [ ] 1.4.1 Add method to update log viewer dialog styling when theme changes
+  - [ ] 1.4.2 Define light theme stylesheet for log viewer
+  - [ ] 1.4.3 Update LogViewerDialog._apply_style method to support both themes
+  - [ ] 1.4.4 Connect MainWindow theme change signal to log viewer theme update
+- [ ] 1.5 Update main.py to use ThemeManager
+  - [ ] 1.5.1 Import ThemeManager from gui.theme_manager
+  - [ ] 1.5.2 Initialize ThemeManager with QApplication
+  - [ ] 1.5.3 Apply saved theme on startup (default to dark if no preference)
+  - [ ] 1.5.4 Pass ThemeManager instance to MainWindow
+- [ ] 1.6 Update MainWindow to use ThemeManager
+  - [ ] 1.6.1 Accept ThemeManager in constructor
+  - [ ] 1.6.2 Store ThemeManager reference
+  - [ ] 1.6.3 Initialize theme toggle button with correct icon based on current theme
+  - [ ] 1.6.4 Add theme_changed signal to notify child widgets of theme changes
+- [ ] 1.7 Add theme styling for light theme in widgets
+  - [ ] 1.7.1 Update ChannelIndicator._apply_card_style to support light theme colors
+  - [ ] 1.7.2 Update LogViewerWidget styling for light theme
+  - [ ] 1.7.3 Update LogViewerDialog styling for light theme
+  - [ ] 1.7.4 Update DigitalIndicator styling for light theme
+- [ ] 1.8 Test theme switching functionality
+  - [ ] 1.8.1 Verify dark theme works correctly (default behavior)
+  - [ ] 1.8.2 Verify light theme works correctly
+  - [ ] 1.8.3 Verify theme toggle button switches icons correctly
+  - [ ] 1.8.4 Verify log viewer window updates theme when toggled
+  - [ ] 1.8.5 Verify theme preference persists across application restarts

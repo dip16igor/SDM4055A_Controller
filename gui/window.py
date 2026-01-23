@@ -36,6 +36,7 @@ from hardware.visa_interface import VisaInterface, MeasurementType, ScanDataResu
 from hardware.async_worker import AsyncScanManager
 from hardware.simulator import VisaSimulator
 from gui.widgets import ChannelIndicator, LogViewerDialog, QLogHandler
+from gui.theme_manager import ThemeManager
 from config import ConfigLoader, ChannelThresholdConfig
 
 logger = logging.getLogger(__name__)
@@ -87,16 +88,20 @@ class MainWindow(QMainWindow):
     scan_started = Signal()
     scan_complete = Signal(object)
 
-    def __init__(self, version: str = "1.0.0", parent: Optional[QObject] = None) -> None:
+    def __init__(self, version: str = "1.0.0", theme_manager: Optional[ThemeManager] = None, parent: Optional[QObject] = None) -> None:
         """Initialize main window.
-        
+
         Args:
             version: Application version string.
+            theme_manager: ThemeManager instance for theme switching.
             parent: Parent widget.
         """
         super().__init__(parent)
         self.setWindowTitle(f"SDM4055A-SC Multimeter Controller v{version}")
         self.resize(1200, 800)
+
+        # Theme manager
+        self._theme_manager = theme_manager
 
         # Initialize VISA interface
         self.visa = VisaInterface()
@@ -273,6 +278,14 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
 
+        # Add theme toggle button to status bar (left side, before log viewer)
+        self.btn_theme_toggle = QPushButton()
+        # Use standard icon for light/dark theme
+        self._update_theme_button_icon()
+        self.btn_theme_toggle.setFixedSize(30, 30)
+        self.btn_theme_toggle.clicked.connect(self._toggle_theme)
+        self.status_bar.addPermanentWidget(self.btn_theme_toggle, 0)
+
         # Add log viewer button to status bar (left side)
         self.btn_log_viewer = QPushButton()
         # Use standard icon for terminal/console
@@ -302,6 +315,10 @@ class MainWindow(QMainWindow):
         self.connection_changed.connect(self._on_connection_changed)
         self.scan_started.connect(self._on_scan_started)
         self.scan_complete.connect(self._on_scan_complete)
+
+        # Connect theme manager signal
+        if self._theme_manager:
+            self._theme_manager.theme_changed.connect(self._on_theme_changed)
 
         # Connect channel measurement type change signals
         for indicator in self.channel_indicators:
@@ -476,6 +493,20 @@ class MainWindow(QMainWindow):
             # Reset all channel indicators
             for indicator in self.channel_indicators:
                 indicator.reset_status()
+
+    @Slot(str)
+    def _on_theme_changed(self, theme: str) -> None:
+        """Handle theme change signal.
+
+        Args:
+            theme: New theme string ("dark" or "light").
+        """
+        # Update theme button icon
+        self._update_theme_button_icon()
+
+        # Update log viewer theme if open
+        if self._log_viewer_dialog is not None and self._log_viewer_dialog.isVisible():
+            self._log_viewer_dialog.update_theme(theme)
 
     def _start_scanning(self) -> None:
         """Start continuous scanning."""
@@ -713,7 +744,7 @@ class MainWindow(QMainWindow):
         """Toggle log viewer window visibility."""
         if self._log_viewer_dialog is None:
             # Create log viewer dialog
-            self._log_viewer_dialog = LogViewerDialog(self)
+            self._log_viewer_dialog = LogViewerDialog(self, theme_manager=self._theme_manager)
             # Connect log handler to dialog
             if hasattr(self, '_log_handler') and self._log_handler is not None:
                 self._log_handler.log_received.connect(self._log_viewer_dialog.add_log)
@@ -725,6 +756,29 @@ class MainWindow(QMainWindow):
             # Force focus to ensure auto-scroll works
             self._log_viewer_dialog.activateWindow()
             self._log_viewer_dialog.raise_()
+
+    def _toggle_theme(self) -> None:
+        """Toggle between dark and light themes."""
+        if self._theme_manager:
+            self._theme_manager.toggle_theme()
+            self._update_theme_button_icon()
+
+    def _update_theme_button_icon(self) -> None:
+        """Update theme toggle button icon based on current theme."""
+        if self._theme_manager is None:
+            return
+
+        current_theme = self._theme_manager.get_current_theme()
+        if current_theme == "dark":
+            # Show sun icon for dark theme (clicking will switch to light)
+            icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DialogYesButton)
+            self.btn_theme_toggle.setIcon(icon)
+            self.btn_theme_toggle.setToolTip("Switch to Light Theme")
+        else:
+            # Show moon icon for light theme (clicking will switch to dark)
+            icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DialogNoButton)
+            self.btn_theme_toggle.setIcon(icon)
+            self.btn_theme_toggle.setToolTip("Switch to Dark Theme")
 
     def closeEvent(self, event) -> None:
         """Handle window close event."""

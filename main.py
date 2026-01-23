@@ -8,9 +8,8 @@ A modern GUI application for monitoring the Siglent SDM4055A-SC
 import sys
 import logging
 from PySide6.QtWidgets import QApplication
-from qt_material import apply_stylesheet
 
-from gui import MainWindow
+from gui import MainWindow, ThemeManager
 import version
 
 
@@ -42,12 +41,13 @@ def main() -> int:
     app.setApplicationName("SDM4055A-SC Controller")
     app.setOrganizationName("SDM4055A-SC")
 
-    # Apply qt-material dark theme
-    apply_stylesheet(app, theme='dark_teal.xml')
-    logger.info("Applied dark_teal theme")
+    # Initialize theme manager and apply saved theme
+    theme_manager = ThemeManager(app)
+    theme_manager.apply_initial_theme()
+    logger.info(f"Applied initial theme: {theme_manager.get_current_theme()}")
 
     # Create and show main window
-    window = MainWindow(version=version.__version__)
+    window = MainWindow(version=version.__version__, theme_manager=theme_manager)
     window.show()
     logger.info("Main window displayed")
 
