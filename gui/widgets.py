@@ -867,9 +867,9 @@ class LogViewerWidget(QWidget):
         toolbar_layout.addWidget(self.btn_clear)
 
         # Filter label
-        filter_label = QLabel("Filter:")
-        filter_label.setStyleSheet("color: #ffffff;")
-        toolbar_layout.addWidget(filter_label)
+        self.filter_label = QLabel("Filter:")
+        self.filter_label.setStyleSheet("color: #ffffff;")
+        toolbar_layout.addWidget(self.filter_label)
 
         # Filter dropdown
         self.combo_filter = QComboBox()
@@ -1256,7 +1256,6 @@ class LogViewerWidget(QWidget):
                         border: 1px solid #6abeff;
                     }
             """)
-            self.filter_label.setStyleSheet("color: #000000;")
 
     def _clear_logs(self) -> None:
         """Clear all logs from the viewer."""

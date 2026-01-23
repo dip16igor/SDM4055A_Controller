@@ -102,6 +102,7 @@ class MainWindow(QMainWindow):
 
         # Theme manager
         self._theme_manager = theme_manager
+        self._current_theme = "dark"  # Default theme
 
         # Initialize VISA interface
         self.visa = VisaInterface()
@@ -146,6 +147,10 @@ class MainWindow(QMainWindow):
 
         # Initialize default channel measurement types
         self._initialize_channel_measurement_types()
+
+        # Apply initial theme
+        if self._theme_manager:
+            self._apply_theme(self._theme_manager.get_current_theme())
 
         # Initial status
         self.status_updated.emit("Ready")
@@ -280,8 +285,6 @@ class MainWindow(QMainWindow):
 
         # Add theme toggle button to status bar (left side, before log viewer)
         self.btn_theme_toggle = QPushButton()
-        # Use standard icon for light/dark theme
-        self._update_theme_button_icon()
         self.btn_theme_toggle.setFixedSize(30, 30)
         self.btn_theme_toggle.clicked.connect(self._toggle_theme)
         self.status_bar.addPermanentWidget(self.btn_theme_toggle, 0)
@@ -308,6 +311,173 @@ class MainWindow(QMainWindow):
         """)
         self.btn_log_viewer.clicked.connect(self._toggle_log_viewer)
         self.status_bar.addPermanentWidget(self.btn_log_viewer, 0)
+
+        # Update theme button icons and styles after all buttons are created
+        self._update_theme_button_icon()
+
+    def _apply_theme(self, theme: str) -> None:
+        """
+        Apply theme to all UI elements in the main window.
+
+        Args:
+            theme: Theme string ("dark" or "light").
+        """
+        self._current_theme = theme
+
+        if theme == "dark":
+            # Dark theme styles
+            self.setStyleSheet("""
+                QMainWindow {
+                    background-color: #2d2d2d;
+                    color: #ffffff;
+                }
+                QGroupBox {
+                    color: #ffffff;
+                    border: 1px solid #3d3d3d;
+                    border-radius: 5px;
+                    margin-top: 10px;
+                    padding-top: 10px;
+                    font-weight: bold;
+                }
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    subcontrol-position: top center;
+                    padding: 0 5px;
+                }
+                QLabel {
+                    color: #ffffff;
+                }
+                QPushButton {
+                    background-color: #4d4d4d;
+                    color: #ffffff;
+                    border: 1px solid #5d5d5d;
+                    border-radius: 4px;
+                    padding: 6px 12px;
+                }
+                QPushButton:hover {
+                    background-color: #5d5d5d;
+                }
+                QPushButton:pressed {
+                    background-color: #6d6d6d;
+                }
+                QPushButton:disabled {
+                    background-color: #3d3d3d;
+                    color: #888888;
+                }
+                QComboBox {
+                    background-color: #4d4d4d;
+                    color: #ffffff;
+                    border: 1px solid #5d5d5d;
+                    border-radius: 4px;
+                    padding: 5px;
+                }
+                QComboBox:hover {
+                    background-color: #5d5d5d;
+                }
+                QComboBox::drop-down {
+                    border: none;
+                }
+                QComboBox::down-arrow {
+                    image: none;
+                    border-left: 5px solid transparent;
+                    border-right: 5px solid transparent;
+                    border-top: 5px solid #ffffff;
+                    margin-right: 5px;
+                }
+                QComboBox QAbstractItemView {
+                    background-color: #4d4d4d;
+                    color: #ffffff;
+                    selection-background-color: #4a9eff;
+                    border: 1px solid #5d5d5d;
+                }
+                QLineEdit {
+                    background-color: #4d4d4d;
+                    color: #ffffff;
+                    border: 1px solid #5d5d5d;
+                    border-radius: 4px;
+                    padding: 5px;
+                }
+                QLineEdit:focus {
+                    border: 1px solid #4a9eff;
+                }
+            """)
+        else:
+            # Light theme styles
+            self.setStyleSheet("""
+                QMainWindow {
+                    background-color: #f5f5f5;
+                    color: #000000;
+                }
+                QGroupBox {
+                    color: #000000;
+                    border: 1px solid #d0d0d0;
+                    border-radius: 5px;
+                    margin-top: 10px;
+                    padding-top: 10px;
+                    font-weight: bold;
+                }
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    subcontrol-position: top center;
+                    padding: 0 5px;
+                }
+                QLabel {
+                    color: #000000;
+                }
+                QPushButton {
+                    background-color: #e0e0e0;
+                    color: #000000;
+                    border: 1px solid #b0b0b0;
+                    border-radius: 4px;
+                    padding: 6px 12px;
+                }
+                QPushButton:hover {
+                    background-color: #f0f0f0;
+                }
+                QPushButton:pressed {
+                    background-color: #d0d0d0;
+                }
+                QPushButton:disabled {
+                    background-color: #e8e8e8;
+                    color: #666666;
+                }
+                QComboBox {
+                    background-color: #ffffff;
+                    color: #000000;
+                    border: 1px solid #b0b0b0;
+                    border-radius: 4px;
+                    padding: 5px;
+                }
+                QComboBox:hover {
+                    background-color: #f0f0f0;
+                }
+                QComboBox::drop-down {
+                    border: none;
+                }
+                QComboBox::down-arrow {
+                    image: none;
+                    border-left: 5px solid transparent;
+                    border-right: 5px solid transparent;
+                    border-top: 5px solid #000000;
+                    margin-right: 5px;
+                }
+                QComboBox QAbstractItemView {
+                    background-color: #ffffff;
+                    color: #000000;
+                    selection-background-color: #4a9eff;
+                    border: 1px solid #b0b0b0;
+                }
+                QLineEdit {
+                    background-color: #ffffff;
+                    color: #000000;
+                    border: 1px solid #b0b0b0;
+                    border-radius: 4px;
+                    padding: 5px;
+                }
+                QLineEdit:focus {
+                    border: 1px solid #4a9eff;
+                }
+            """)
 
     def _setup_connections(self) -> None:
         """Setup signal connections."""
@@ -503,6 +673,9 @@ class MainWindow(QMainWindow):
         """
         # Update theme button icon
         self._update_theme_button_icon()
+
+        # Apply theme to main window
+        self._apply_theme(theme)
 
         # Update all channel indicators' themes
         for indicator in self.channel_indicators:
@@ -778,11 +951,66 @@ class MainWindow(QMainWindow):
             icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DialogYesButton)
             self.btn_theme_toggle.setIcon(icon)
             self.btn_theme_toggle.setToolTip("Switch to Light Theme")
+            self.btn_theme_toggle.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    border: none;
+                    border-radius: 4px;
+                }
+                QPushButton:hover {
+                    background-color: #4d4d4d;
+                }
+                QPushButton:pressed {
+                    background-color: #5d5d5d;
+                }
+            """)
         else:
             # Show moon icon for light theme (clicking will switch to dark)
             icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DialogNoButton)
             self.btn_theme_toggle.setIcon(icon)
             self.btn_theme_toggle.setToolTip("Switch to Dark Theme")
+            self.btn_theme_toggle.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    border: none;
+                    border-radius: 4px;
+                }
+                QPushButton:hover {
+                    background-color: #d0d0d0;
+                }
+                QPushButton:pressed {
+                    background-color: #b0b0b0;
+                }
+            """)
+        # Update log viewer button style
+        if current_theme == "dark":
+            self.btn_log_viewer.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    border: none;
+                    border-radius: 4px;
+                }
+                QPushButton:hover {
+                    background-color: #4d4d4d;
+                }
+                QPushButton:pressed {
+                    background-color: #5d5d5d;
+                }
+            """)
+        else:
+            self.btn_log_viewer.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    border: none;
+                    border-radius: 4px;
+                }
+                QPushButton:hover {
+                    background-color: #d0d0d0;
+                }
+                QPushButton:pressed {
+                    background-color: #b0b0b0;
+                }
+            """)
 
     def closeEvent(self, event) -> None:
         """Handle window close event."""
