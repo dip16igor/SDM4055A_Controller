@@ -83,6 +83,30 @@ class DigitalIndicator(QWidget):
             }
         """)
 
+    def update_theme(self, theme: str) -> None:
+        """
+        Update widget theme.
+
+        Args:
+            theme: Theme string ("dark" or "light").
+        """
+        if theme == "dark":
+            self.setStyleSheet("""
+                DigitalIndicator {
+                    background-color: #2d2d2d;
+                    border-radius: 10px;
+                    border: 1px solid #3d3d3d;
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                DigitalIndicator {
+                    background-color: #f5f5f5;
+                    border-radius: 10px;
+                    border: 1px solid #d0d0d0;
+                }
+            """)
+
     def set_value(self, value: float, unit: str = "V") -> None:
         """
         Update the displayed value.
@@ -240,6 +264,7 @@ class ChannelIndicator(QWidget):
         self._value = 0.0
         self._is_current_channel = channel_num > 12
         self._range_value = "AUTO"  # Default range
+        self._current_theme = "dark"  # Default theme
         
         # Set default unit based on channel type
         if self._is_current_channel:
@@ -375,6 +400,88 @@ class ChannelIndicator(QWidget):
             }
         """)
 
+    def update_theme(self, theme: str) -> None:
+        """
+        Update widget theme.
+
+        Args:
+            theme: Theme string ("dark" or "light").
+        """
+        self._current_theme = theme
+        if theme == "dark":
+            self.setStyleSheet("""
+                ChannelIndicator {
+                    background-color: #2d2d2d;
+                    border-radius: 10px;
+                    border: 1px solid #3d3d3d;
+                }
+                QComboBox {
+                    background-color: #3d3d3d;
+                    color: #ffffff;
+                    border: 1px solid #4d4d4d;
+                    border-radius: 4px;
+                    padding: 5px;
+                    min-height: 25px;
+                }
+                QComboBox:hover {
+                    background-color: #4d4d4d;
+                }
+                QComboBox::drop-down {
+                    border: none;
+                }
+                QComboBox::down-arrow {
+                    image: none;
+                    border-left: 5px solid transparent;
+                    border-right: 5px solid transparent;
+                    border-top: 5px solid #ffffff;
+                    margin-right: 5px;
+                }
+                QComboBox QAbstractItemView {
+                    background-color: #3d3d3d;
+                    color: #ffffff;
+                    selection-background-color: #4a9eff;
+                    border: 1px solid #4d4d4d;
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                ChannelIndicator {
+                    background-color: #f5f5f5;
+                    border-radius: 10px;
+                    border: 1px solid #d0d0d0;
+                }
+                QComboBox {
+                    background-color: #ffffff;
+                    color: #000000;
+                    border: 1px solid #b0b0b0;
+                    border-radius: 4px;
+                    padding: 5px;
+                    min-height: 25px;
+                }
+                QComboBox:hover {
+                    background-color: #f0f0f0;
+                }
+                QComboBox::drop-down {
+                    border: none;
+                }
+                QComboBox::down-arrow {
+                    image: none;
+                    border-left: 5px solid transparent;
+                    border-right: 5px solid transparent;
+                    border-top: 5px solid #000000;
+                    margin-right: 5px;
+                }
+                QComboBox QAbstractItemView {
+                    background-color: #ffffff;
+                    color: #000000;
+                    selection-background-color: #4a9eff;
+                    border: 1px solid #b0b0b0;
+                }
+            """)
+        # Re-apply threshold colors if thresholds are enabled
+        if self._thresholds_enabled:
+            self._apply_threshold_color(self._value)
+
     def set_value(self, value: float, unit: str = None) -> None:
         """
         Update the displayed value with range-based conversion and threshold color coding.
@@ -487,34 +594,43 @@ class ChannelIndicator(QWidget):
     def _apply_threshold_color(self, value: float = None, use_converted: bool = False) -> None:
         """
         Apply color based on threshold comparison.
-        
+
         Args:
             value: The value to check against thresholds (original or converted).
             use_converted: If True, use converted value for comparison.
         """
         if not self._thresholds_enabled:
             return
-        
+
         # Check if value is within thresholds
         in_range = True
-        
+
         if self._lower_threshold is not None and value < self._lower_threshold:
             in_range = False
-        
+
         if self._upper_threshold is not None and value > self._upper_threshold:
             in_range = False
-        
-        # Apply color while preserving font style
+
+        # Apply color while preserving font style (theme-aware)
+        if self._current_theme == "dark":
+            # Dark theme colors
+            green_color = "#51cf66"  # Bright green
+            red_color = "#ff6b6b"    # Bright red
+        else:
+            # Light theme colors (darker for better contrast)
+            green_color = "#2e7d32"  # Darker green
+            red_color = "#c62828"    # Darker red
+
         if in_range:
             self.value_label.setStyleSheet(f"""
-                color: #51cf66;
+                color: {green_color};
                 font-size: {self.VALUE_FONT_SIZE}pt;
                 font-weight: bold;
                 font-family: 'Consolas', 'Courier New', monospace;
             """)  # Green
         else:
             self.value_label.setStyleSheet(f"""
-                color: #ff6b6b;
+                color: {red_color};
                 font-size: {self.VALUE_FONT_SIZE}pt;
                 font-weight: bold;
                 font-family: 'Consolas', 'Courier New', monospace;
@@ -1181,17 +1297,40 @@ class LogViewerDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Apply dark theme styling
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #2d2d2d;
-                color: #ffffff;
-            }
-        """)
+        # Apply initial theme styling
+        self._apply_dialog_style(self._current_theme)
 
         # Create log viewer widget
         self.log_viewer = LogViewerWidget()
         layout.addWidget(self.log_viewer)
+
+    def _apply_dialog_style(self, theme: str) -> None:
+        """Apply dialog styling based on theme."""
+        if theme == "dark":
+            self.setStyleSheet("""
+                QDialog {
+                    background-color: #2d2d2d;
+                    color: #ffffff;
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                QDialog {
+                    background-color: #ffffff;
+                    color: #000000;
+                }
+            """)
+
+    def update_theme(self, theme: str) -> None:
+        """
+        Update dialog theme.
+
+        Args:
+            theme: Theme string ("dark" or "light").
+        """
+        self._current_theme = theme
+        self._apply_dialog_style(theme)
+        self.log_viewer.update_theme(theme)
 
     def add_log(self, timestamp: str, level: str, logger_name: str, message: str) -> None:
         """

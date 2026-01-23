@@ -504,6 +504,10 @@ class MainWindow(QMainWindow):
         # Update theme button icon
         self._update_theme_button_icon()
 
+        # Update all channel indicators' themes
+        for indicator in self.channel_indicators:
+            indicator.update_theme(theme)
+
         # Update log viewer theme if open
         if self._log_viewer_dialog is not None and self._log_viewer_dialog.isVisible():
             self._log_viewer_dialog.update_theme(theme)
