@@ -26,12 +26,16 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QFileDialog,
     QLineEdit,
+    QCheckBox,
 )
+
+from PySide6.QtGui import QAction, QMouseEvent, QIcon
+from PySide6.QtWidgets import QStyle
 
 from hardware.visa_interface import VisaInterface, MeasurementType, ScanDataResult
 from hardware.async_worker import AsyncScanManager
 from hardware.simulator import VisaSimulator
-from gui.widgets import ChannelIndicator
+from gui.widgets import ChannelIndicator, LogViewerDialog, QLogHandler
 from config import ConfigLoader, ChannelThresholdConfig
 
 logger = logging.getLogger(__name__)
@@ -120,6 +124,16 @@ class MainWindow(QMainWindow):
 
         # Report file path for saving measurements
         self._report_file_path: Optional[str] = None
+
+        # Log viewer dialog
+        self._log_viewer_dialog: Optional[LogViewerDialog] = None
+
+        # Setup Qt log handler for GUI log display
+        self._log_handler = QLogHandler(self)
+        self._log_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        # Add handler to root logger
+        root_logger = logging.getLogger()
+        root_logger.addHandler(self._log_handler)
 
         # Setup UI
         self._setup_ui()
@@ -258,6 +272,29 @@ class MainWindow(QMainWindow):
         # Status bar
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
+
+        # Add log viewer button to status bar (left side)
+        self.btn_log_viewer = QPushButton()
+        # Use standard icon for terminal/console
+        icon = self.style().standardIcon(QStyle.StandardPixmap.SP_MessageBoxInformation)
+        self.btn_log_viewer.setIcon(icon)
+        self.btn_log_viewer.setToolTip("Open Log Viewer")
+        self.btn_log_viewer.setFixedSize(30, 30)
+        self.btn_log_viewer.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #4d4d4d;
+            }
+            QPushButton:pressed {
+                background-color: #5d5d5d;
+            }
+        """)
+        self.btn_log_viewer.clicked.connect(self._toggle_log_viewer)
+        self.status_bar.addPermanentWidget(self.btn_log_viewer, 0)
 
     def _setup_connections(self) -> None:
         """Setup signal connections."""
@@ -672,6 +709,20 @@ class MainWindow(QMainWindow):
                 # Fallback for backward compatibility (if result is a float)
                 indicator.set_value(float(result))
 
+    def _toggle_log_viewer(self) -> None:
+        """Toggle log viewer window visibility."""
+        if self._log_viewer_dialog is None:
+            # Create log viewer dialog
+            self._log_viewer_dialog = LogViewerDialog(self)
+            # Connect log handler to dialog
+            if hasattr(self, '_log_handler') and self._log_handler is not None:
+                self._log_handler.log_received.connect(self._log_viewer_dialog.add_log)
+            self._log_viewer_dialog.show()
+        elif self._log_viewer_dialog.isVisible():
+            self._log_viewer_dialog.hide()
+        else:
+            self._log_viewer_dialog.show()
+
     def closeEvent(self, event) -> None:
         """Handle window close event."""
         # Stop scanning
@@ -685,6 +736,11 @@ class MainWindow(QMainWindow):
         else:
             if self.visa.is_connected():
                 self.visa.disconnect()
+
+        # Disconnect log handler
+        if self._log_handler is not None:
+            root_logger = logging.getLogger()
+            root_logger.removeHandler(self._log_handler)
 
         event.accept()
         logger.info("Application closed")

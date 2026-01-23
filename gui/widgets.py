@@ -2,11 +2,14 @@
 Custom GUI widgets for SDM4055A-SC multimeter controller.
 """
 
+import logging
+from datetime import datetime
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QComboBox
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QComboBox,
+    QTextEdit, QPushButton, QDialog, QToolBar, QCheckBox
 )
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QPalette, QColor
+from PySide6.QtCore import Qt, Signal, QObject
+from PySide6.QtGui import QFont, QPalette, QColor, QTextCursor
 from typing import Optional
 
 
@@ -639,3 +642,360 @@ class ChannelIndicator(QWidget):
         
         # Emit signal for range change
         self.range_changed.emit(self._channel_num, range_value)
+
+
+class QLogHandler(QObject, logging.Handler):
+    """
+    Qt-based logging handler that emits signals for log records.
+    Allows real-time log display in GUI widgets.
+    """
+
+    # Signal emitted when a log record is received
+    log_received = Signal(str, str, str, str)  # timestamp, level, logger_name, message
+
+    def __init__(self, parent=None):
+        """
+        Initialize Qt log handler.
+
+        Args:
+            parent: Parent QObject.
+        """
+        QObject.__init__(self, parent)
+        logging.Handler.__init__(self)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """
+        Emit a log record as a Qt signal.
+
+        Args:
+            record: Log record to emit.
+        """
+        try:
+            # Format timestamp
+            timestamp = datetime.fromtimestamp(record.created).strftime("%Y-%m-%d %H:%M:%S")
+
+            # Get log level name
+            level = record.levelname
+
+            # Get logger name
+            logger_name = record.name
+
+            # Format message
+            message = self.format(record)
+
+            # Emit signal
+            self.log_received.emit(timestamp, level, logger_name, message)
+        except Exception:
+            self.handleError(record)
+
+
+class LogViewerWidget(QWidget):
+    """
+    Widget for displaying application logs with color coding and filtering.
+    """
+
+    # Log level colors (dark theme)
+    LOG_COLORS = {
+        "DEBUG": "#888888",      # Gray
+        "INFO": "#ffffff",       # White
+        "WARNING": "#ffd700",    # Yellow/Gold
+        "ERROR": "#ff6b6b",     # Red
+        "CRITICAL": "#ff00ff",   # Magenta
+    }
+
+    def __init__(self, parent=None):
+        """
+        Initialize log viewer widget.
+
+        Args:
+            parent: Parent widget.
+        """
+        super().__init__(parent)
+
+        self._auto_scroll = True
+        self._log_buffer = []  # Store all logs for filtering
+
+        # Setup UI
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        """Setup widget's UI components."""
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(5)
+
+        # Toolbar
+        toolbar_layout = QHBoxLayout()
+        toolbar_layout.setSpacing(10)
+
+        # Clear button
+        self.btn_clear = QPushButton("Clear Logs")
+        self.btn_clear.clicked.connect(self._clear_logs)
+        self.btn_clear.setStyleSheet("""
+            QPushButton {
+                background-color: #4d4d4d;
+                color: #ffffff;
+                border: 1px solid #5d5d5d;
+                border-radius: 4px;
+                padding: 5px 15px;
+            }
+            QPushButton:hover {
+                background-color: #5d5d5d;
+            }
+            QPushButton:pressed {
+                background-color: #6d6d6d;
+            }
+        """)
+        toolbar_layout.addWidget(self.btn_clear)
+
+        # Filter label
+        filter_label = QLabel("Filter:")
+        filter_label.setStyleSheet("color: #ffffff;")
+        toolbar_layout.addWidget(filter_label)
+
+        # Filter dropdown
+        self.combo_filter = QComboBox()
+        self.combo_filter.addItems(["All", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+        self.combo_filter.currentTextChanged.connect(self._apply_filter)
+        self.combo_filter.setStyleSheet("""
+            QComboBox {
+                background-color: #4d4d4d;
+                color: #ffffff;
+                border: 1px solid #5d5d5d;
+                border-radius: 4px;
+                padding: 5px;
+                min-height: 25px;
+            }
+            QComboBox:hover {
+                background-color: #5d5d5d;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #ffffff;
+                margin-right: 5px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #4d4d4d;
+                color: #ffffff;
+                selection-background-color: #4a9eff;
+                border: 1px solid #5d5d5d;
+            }
+        """)
+        toolbar_layout.addWidget(self.combo_filter)
+
+        # Auto-scroll checkbox
+        self.chk_auto_scroll = QCheckBox("Auto-scroll")
+        self.chk_auto_scroll.setChecked(True)
+        self.chk_auto_scroll.toggled.connect(self._set_auto_scroll)
+        self.chk_auto_scroll.setStyleSheet("""
+            QCheckBox {
+                color: #ffffff;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border: 1px solid #5d5d5d;
+                border-radius: 3px;
+                background-color: #4d4d4d;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #4a9eff;
+                border: 1px solid #4a9eff;
+            }
+            QCheckBox::indicator:hover {
+                border: 1px solid #6abeff;
+            }
+        """)
+        toolbar_layout.addWidget(self.chk_auto_scroll)
+
+        toolbar_layout.addStretch()
+        layout.addLayout(toolbar_layout)
+
+        # Log text area
+        self.text_logs = QTextEdit()
+        self.text_logs.setReadOnly(True)
+        self.text_logs.setFont(QFont("Consolas, Courier New, monospace", 9))
+        self.text_logs.setStyleSheet("""
+            QTextEdit {
+                background-color: #1e1e1e;
+                color: #ffffff;
+                border: 1px solid #3d3d3d;
+                border-radius: 4px;
+            }
+        """)
+        # Connect scroll event to detect manual scrolling
+        self.text_logs.verticalScrollBar().valueChanged.connect(self._on_scroll_changed)
+        layout.addWidget(self.text_logs)
+
+    def _on_scroll_changed(self, value: int) -> None:
+        """
+        Handle scroll bar value change to detect manual scrolling.
+
+        Args:
+            value: New scroll bar value.
+        """
+        max_value = self.text_logs.verticalScrollBar().maximum()
+        # If user scrolled away from bottom, disable auto-scroll
+        if value < max_value:
+            self._auto_scroll = False
+            self.chk_auto_scroll.setChecked(False)
+        # If user scrolled to bottom, re-enable auto-scroll
+        elif value == max_value:
+            self._auto_scroll = True
+            self.chk_auto_scroll.setChecked(True)
+
+    def _set_auto_scroll(self, enabled: bool) -> None:
+        """
+        Set auto-scroll state.
+
+        Args:
+            enabled: Whether auto-scroll is enabled.
+        """
+        self._auto_scroll = enabled
+
+    def add_log(self, timestamp: str, level: str, logger_name: str, message: str) -> None:
+        """
+        Add a log entry to the viewer.
+
+        Args:
+            timestamp: Log timestamp string.
+            level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
+            logger_name: Name of the logger.
+            message: Log message text.
+        """
+        # Store log entry
+        log_entry = {
+            "timestamp": timestamp,
+            "level": level,
+            "logger_name": logger_name,
+            "message": message
+        }
+        self._log_buffer.append(log_entry)
+
+        # Apply filter and display
+        self._apply_filter()
+
+    def _apply_filter(self) -> None:
+        """Apply current filter to log display."""
+        # Get current filter level
+        filter_level = self.combo_filter.currentText()
+
+        # Clear display
+        self.text_logs.clear()
+
+        # Filter logs
+        filtered_logs = []
+        for log_entry in self._log_buffer:
+            if filter_level == "All":
+                filtered_logs.append(log_entry)
+            else:
+                # Show logs at or above selected level
+                level_priority = {
+                    "DEBUG": 0,
+                    "INFO": 1,
+                    "WARNING": 2,
+                    "ERROR": 3,
+                    "CRITICAL": 4
+                }
+                if level_priority.get(log_entry["level"], 0) >= level_priority.get(filter_level, 0):
+                    filtered_logs.append(log_entry)
+
+        # Display filtered logs
+        for log_entry in filtered_logs:
+            self._display_log_entry(log_entry)
+
+        # Auto-scroll if enabled
+        if self._auto_scroll:
+            self._scroll_to_bottom()
+
+    def _display_log_entry(self, log_entry: dict) -> None:
+        """
+        Display a single log entry in the text area.
+
+        Args:
+            log_entry: Dictionary containing timestamp, level, logger_name, and message.
+        """
+        timestamp = log_entry["timestamp"]
+        level = log_entry["level"]
+        logger_name = log_entry["logger_name"]
+        message = log_entry["message"]
+
+        # Get color for log level
+        color = self.LOG_COLORS.get(level, "#ffffff")
+
+        # Format log line
+        log_line = f"[{timestamp}] {level:8} | {logger_name:20} | {message}"
+
+        # Append to text area with color
+        cursor = self.text_logs.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        cursor.insertHtml(f'<span style="color: {color}">{log_line}</span><br>')
+
+    def _scroll_to_bottom(self) -> None:
+        """Scroll to the bottom of the log viewer."""
+        scrollbar = self.text_logs.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+
+    def _clear_logs(self) -> None:
+        """Clear all logs from the viewer."""
+        self._log_buffer.clear()
+        self.text_logs.clear()
+
+
+class LogViewerDialog(QDialog):
+    """
+    Dialog window for displaying application logs.
+    """
+
+    def __init__(self, parent=None):
+        """
+        Initialize log viewer dialog.
+
+        Args:
+            parent: Parent widget.
+        """
+        super().__init__(parent)
+
+        self.setWindowTitle("Application Logs")
+        self.resize(900, 600)
+
+        # Setup UI
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        """Setup dialog's UI components."""
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Apply dark theme styling
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #2d2d2d;
+                color: #ffffff;
+            }
+        """)
+
+        # Create log viewer widget
+        self.log_viewer = LogViewerWidget()
+        layout.addWidget(self.log_viewer)
+
+    def add_log(self, timestamp: str, level: str, logger_name: str, message: str) -> None:
+        """
+        Add a log entry to the viewer.
+
+        Args:
+            timestamp: Log timestamp string.
+            level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
+            logger_name: Name of the logger.
+            message: Log message text.
+        """
+        self.log_viewer.add_log(timestamp, level, logger_name, message)
+
+    def clear_logs(self) -> None:
+        """Clear all logs from the viewer."""
+        self.log_viewer._clear_logs()

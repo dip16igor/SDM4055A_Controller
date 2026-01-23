@@ -32,11 +32,11 @@
 #   - You can configure only the channels you need
 
 # Example configurations:
-channel,measurement_type,range,lower_threshold,upper_threshold
-1,VOLT:DC,200 mV,150,180
-2,VOLT:DC,AUTO,2.0,2.1
-3,VOLT:DC,AUTO,2.0,2.1
-4,VOLT:DC,AUTO,2.0,2.1
-6,VOLT:DC,AUTO,2.1,2.2
-7,VOLT:DC,AUTO,1.0,1.1
+channel,Name,measurement_type,range,lower_threshold,upper_threshold
+1, 3.3VD, VOLT:DC,200 mV,150,180
+2, 5.0VD, VOLT:DC,AUTO,2.0,2.1
+3, 12V, VOLT:DC,AUTO,2.0,2.1
+4, 7V, VOLT:DC,AUTO,2.0,2.1
+6,,VOLT:DC,AUTO,2.1,2.2
+7,,VOLT:DC,AUTO,1.0,1.1
 
