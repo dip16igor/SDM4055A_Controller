@@ -887,6 +887,9 @@ class LogViewerWidget(QWidget):
         # Only append if matches current filter (optimized)
         if self._matches_filter(level):
             self._display_log_entry(log_entry)
+            # Auto-scroll to bottom if enabled
+            if self._auto_scroll:
+                self._scroll_to_bottom()
 
     def _matches_filter(self, level: str) -> bool:
         """
@@ -954,6 +957,9 @@ class LogViewerWidget(QWidget):
 
     def _scroll_to_bottom(self) -> None:
         """Scroll to the bottom of the log viewer."""
+        from PySide6.QtWidgets import QApplication
+        # Process events to ensure text is rendered before scrolling
+        QApplication.processEvents()
         scrollbar = self.text_logs.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
 

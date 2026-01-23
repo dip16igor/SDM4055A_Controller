@@ -722,6 +722,9 @@ class MainWindow(QMainWindow):
             self._log_viewer_dialog.hide()
         else:
             self._log_viewer_dialog.show()
+            # Force focus to ensure auto-scroll works
+            self._log_viewer_dialog.activateWindow()
+            self._log_viewer_dialog.raise_()
 
     def closeEvent(self, event) -> None:
         """Handle window close event."""
