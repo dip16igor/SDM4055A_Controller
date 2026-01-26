@@ -1173,6 +1173,8 @@ class LogViewerWidget(QWidget):
                         border: 1px solid #6abeff;
                     }
             """)
+            # Clear and re-display all logs with new theme colors
+            self._redisplay_all_logs()
             self.filter_label.setStyleSheet("color: #ffffff;")
         else:
             # Light theme colors
@@ -1256,6 +1258,25 @@ class LogViewerWidget(QWidget):
                         border: 1px solid #6abeff;
                     }
             """)
+            # Clear and re-display all logs with new theme colors
+            self._redisplay_all_logs()
+            self.filter_label.setStyleSheet("color: #000000;")
+
+    def _redisplay_all_logs(self) -> None:
+        """Clear and re-display all log entries with current theme colors."""
+        # Store current log buffer
+        log_buffer = self._log_buffer.copy()
+        
+        # Clear text display
+        self.text_logs.clear()
+        
+        # Re-display all logs with current theme colors
+        for log_entry in log_buffer:
+            self._display_log_entry(log_entry)
+        
+        # Auto-scroll to bottom if enabled
+        if self._auto_scroll:
+            self._scroll_to_bottom()
 
     def _clear_logs(self) -> None:
         """Clear all logs from the viewer."""
