@@ -174,6 +174,97 @@ The device communicates via USB using VISA protocol, which is an industry standa
   - Data file inclusion: `gui`, `hardware` directories
   - Standalone Windows executable output
 
+## Recent Changes (2026-01-26)
+
+### New Features
+1. **Theme Switching**
+     - Added theme toggle button in status bar (30x30px, left of log viewer button)
+     - Created `ThemeManager` class for centralized theme management
+     - Theme persistence using QSettings (saves user's theme preference)
+     - Yin-Yang symbol icon for intuitive theme switching
+     - Support for dark and light themes:
+       - Dark theme: Uses qt-material's dark_teal.xml
+       - Light theme: Uses qt-material's light_teal.xml
+     - All UI elements update colors when theme changes:
+       - Main window (backgrounds, borders, text)
+       - Channel indicators (cards, dropdowns, threshold colors)
+       - Log viewer (text colors, background, toolbar)
+       - Status bar buttons (hover states)
+     - Theme-aware threshold colors:
+       - Dark theme: Bright green (#51cf66) and red (#ff6b6b)
+       - Light theme: Darker green (#2e7d32) and red (#c62828) for better contrast
+     - Log viewer color refresh on theme change:
+       - Existing log entries update their colors when theme switches
+       - Implemented `_redisplay_all_logs()` method to refresh all logs
+     - Real-time theme switching without application restart
+
+### Modified Files
+- **gui/theme_manager.py** (NEW):
+   - Created `ThemeManager` class for theme state management
+   - Implemented `theme_changed` signal for theme change notifications
+   - Added `toggle_theme()` method for switching between dark and light themes
+   - Added `get_current_theme()` method to retrieve current theme
+   - Added `apply_initial_theme()` method to apply saved theme on startup
+   - Uses QSettings for theme persistence (key: "app_theme")
+
+- **gui/__init__.py**:
+   - Added `ThemeManager` export to make it available to other modules
+
+- **main.py**:
+   - Updated to use `ThemeManager` instead of directly applying qt-material theme
+   - Creates ThemeManager instance
+   - Calls `apply_initial_theme()` to load saved theme on startup
+   - Passes ThemeManager to MainWindow
+
+- **gui/window.py**:
+   - Added `QPainter`, `QPainterPath`, `QColor` imports for icon creation
+   - Added `theme_manager` parameter to `__init__()` method
+   - Added `_current_theme` attribute to track current theme
+   - Created theme toggle button in status bar (30x30px, left of log viewer button)
+   - Implemented `_apply_theme()` method for applying styles to all UI elements
+   - Implemented `_toggle_theme()` method for switching themes
+   - Implemented `_update_theme_button_icon()` method to update button icon
+   - Implemented `_create_yin_yang_icon()` method to create Yin-Yang symbol icon
+   - Updated `_on_theme_changed()` to apply theme and update all channel indicators
+   - Updated `_on_theme_changed()` to update log viewer theme if open
+   - Dark theme styles:
+     - Background: #2d2d2d, #4d4d4d (buttons/combos)
+     - Text: #ffffff
+     - Borders: #3d3d3d, #5d5d5d
+     - Hover states: #5d5d5d
+   - Light theme styles:
+     - Background: #f5f5f5, #e0e0e0 (buttons/combos)
+     - Text: #000000
+     - Borders: #d0d0d0, #b0b0b0
+     - Hover states: #f0f0f0
+     - Disabled buttons: #e8e8e8 background, #666666 text
+
+- **gui/widgets.py**:
+   - `LogViewerWidget`:
+     - Added `_redisplay_all_logs()` method to refresh all logs with new theme colors
+     - Updated `update_theme()` method to call `_redisplay_all_logs()` on theme change
+     - Dark theme log colors:
+       - DEBUG: #888888, INFO: #ffffff, WARNING: #ffd700
+       - ERROR: #ff6b6b, CRITICAL: #ff00ff
+     - Light theme log colors (darker for better contrast):
+       - DEBUG: #666666, INFO: #000000, WARNING: #d4a000
+       - ERROR: #d32f2f, CRITICAL: #8b0000
+   - `LogViewerDialog`:
+     - Added `theme_manager` parameter to `__init__()`
+     - Added `_current_theme` attribute
+     - Added `update_theme()` method to update dialog and widget themes
+   - `ChannelIndicator`:
+     - Added `_current_theme` attribute
+     - Added `update_theme()` method for theme-aware styling
+     - Updated `_apply_threshold_color()` to use theme-aware colors
+     - Dark theme threshold colors: #51cf66 (green), #ff6b6b (red)
+     - Light theme threshold colors: #2e7d32 (green), #c62828 (red)
+   - `DigitalIndicator`:
+     - Added `update_theme()` method for theme-aware styling
+
+### Archived Proposals
+- **add-theme-switching** → archived in `openspec/changes/archive/2026-01-26-add-theme-switching/`
+
 ## Recent Changes (2026-01-23)
 
 ### New Features
