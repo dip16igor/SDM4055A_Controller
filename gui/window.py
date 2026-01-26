@@ -393,15 +393,17 @@ class MainWindow(QMainWindow):
                     border: 1px solid #3d3d3d;
                     border-radius: 5px;
                     margin-top: 10px;
-                    padding-top: 4px;
+                    padding-top: 10px;
                     padding-left: 10px;
                     padding-right: 10px;
                     font-weight: bold;
                 }
                 QGroupBox::title {
-                    subcontrol-origin: content;
+                    subcontrol-origin: margin;
                     subcontrol-position: top center;
                     padding: 0 10px;
+                    background-color: #2d2d2d;
+                    color: #cccccc;
                 }
                 QLabel {
                     color: #ffffff;
@@ -472,15 +474,17 @@ class MainWindow(QMainWindow):
                     border: 1px solid #d0d0d0;
                     border-radius: 5px;
                     margin-top: 10px;
-                    padding-top: 4px;
+                    padding-top: 10px;
                     padding-left: 10px;
                     padding-right: 10px;
                     font-weight: bold;
                 }
                 QGroupBox::title {
-                    subcontrol-origin: content;
+                    subcontrol-origin: margin;
                     subcontrol-position: top center;
                     padding: 0 10px;
+                    background-color: #f5f5f5;
+                    color: #666666;
                 }
                 QLabel {
                     color: #000000;
