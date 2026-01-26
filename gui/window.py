@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 from PySide6.QtCore import QObject, Signal, Slot, Qt
-from PySide6.QtGui import QAction, QMouseEvent
+from PySide6.QtGui import QAction, QMouseEvent, QIcon, QPainter, QPainterPath, QColor
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -29,7 +29,6 @@ from PySide6.QtWidgets import (
     QCheckBox,
 )
 
-from PySide6.QtGui import QAction, QMouseEvent, QIcon
 from PySide6.QtWidgets import QStyle
 
 from hardware.visa_interface import VisaInterface, MeasurementType, ScanDataResult
@@ -314,6 +313,64 @@ class MainWindow(QMainWindow):
 
         # Update theme button icons and styles after all buttons are created
         self._update_theme_button_icon()
+
+    def _create_yin_yang_icon(self) -> QIcon:
+        """
+        Create a Yin-Yang symbol icon for theme switching.
+        The Yin-Yang symbol represents balance between dark and light.
+        
+        Returns:
+            QIcon containing the Yin-Yang symbol.
+        """
+        from PySide6.QtGui import QPixmap, QImage
+        
+        # Create a 64x64 pixmap
+        size = 64
+        pixmap = QPixmap(size, size)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        
+        # Create painter
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        # Center coordinates
+        center_x = size // 2
+        center_y = size // 2
+        radius = size // 2 - 2  # Leave some margin
+        
+        # Draw outer circle
+        painter.setPen(QColor("#000000"))
+        painter.setBrush(QColor("#000000"))
+        painter.drawEllipse(center_x - radius, center_y - radius, radius * 2, radius * 2)
+        
+        # Draw white half (right side)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor("#ffffff"))
+        painter.drawPie(center_x - radius, center_y - radius, radius * 2, radius * 2, 90 * 16, 180 * 16)
+        
+        # Draw small white circle on left side
+        small_radius = radius // 2
+        painter.setBrush(QColor("#ffffff"))
+        painter.drawEllipse(center_x - small_radius, center_y - radius, small_radius * 2, small_radius * 2)
+        
+        # Draw small black circle on right side
+        painter.setBrush(QColor("#000000"))
+        painter.drawEllipse(center_x - small_radius, center_y, small_radius * 2, small_radius * 2)
+        
+        # Draw small black dot in white circle (left)
+        dot_radius = radius // 6
+        painter.setBrush(QColor("#000000"))
+        painter.drawEllipse(center_x - dot_radius, center_y - radius // 2 - dot_radius, dot_radius * 2, dot_radius * 2)
+        
+        # Draw small white dot in black circle (right)
+        painter.setBrush(QColor("#ffffff"))
+        painter.drawEllipse(center_x - dot_radius, center_y + radius // 2 - dot_radius, dot_radius * 2, dot_radius * 2)
+        
+        # End painting
+        painter.end()
+        
+        # Create icon from pixmap
+        return QIcon(pixmap)
 
     def _apply_theme(self, theme: str) -> None:
         """
@@ -946,10 +1003,13 @@ class MainWindow(QMainWindow):
             return
 
         current_theme = self._theme_manager.get_current_theme()
+        
+        # Create and set Yin-Yang icon
+        yin_yang_icon = self._create_yin_yang_icon()
+        self.btn_theme_toggle.setIcon(yin_yang_icon)
+        
         if current_theme == "dark":
-            # Show sun icon for dark theme (clicking will switch to light)
-            icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DialogYesButton)
-            self.btn_theme_toggle.setIcon(icon)
+            # Dark theme - tooltip indicates switching to light
             self.btn_theme_toggle.setToolTip("Switch to Light Theme")
             self.btn_theme_toggle.setStyleSheet("""
                 QPushButton {
@@ -965,9 +1025,7 @@ class MainWindow(QMainWindow):
                 }
             """)
         else:
-            # Show moon icon for light theme (clicking will switch to dark)
-            icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DialogNoButton)
-            self.btn_theme_toggle.setIcon(icon)
+            # Light theme - tooltip indicates switching to dark
             self.btn_theme_toggle.setToolTip("Switch to Dark Theme")
             self.btn_theme_toggle.setStyleSheet("""
                 QPushButton {
