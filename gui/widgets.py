@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QComboBox,
-    QTextEdit, QPushButton, QDialog, QToolBar, QCheckBox
+    QTextEdit, QPushButton, QDialog, QToolBar, QCheckBox, QGridLayout
 )
 from PySide6.QtCore import Qt, Signal, QObject
 from PySide6.QtGui import QFont, QPalette, QColor, QTextCursor
@@ -1282,6 +1282,193 @@ class LogViewerWidget(QWidget):
         """Clear all logs from the viewer."""
         self._log_buffer.clear()
         self.text_logs.clear()
+
+
+class ChannelProgressIndicator(QWidget):
+    """
+    Animated progress indicator showing scanning progress across 16 channels.
+    Displays 16 channel segments that animate as channels are scanned.
+    """
+
+    def __init__(self, parent=None):
+        """
+        Initialize channel progress indicator.
+
+        Args:
+            parent: Parent widget.
+        """
+        super().__init__(parent)
+
+        self._total_channels = 16
+        self._scanned_channels = set()
+        self._current_theme = "dark"
+        self._is_animating = False
+
+        # Setup UI
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        """Setup widget's UI components."""
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(2)
+
+        # Create grid for 16 channel indicators
+        self.grid_layout = QGridLayout()
+        self.grid_layout.setSpacing(3)
+
+        # Create channel indicator widgets
+        self.channel_widgets = []
+        for i in range(self._total_channels):
+            channel_widget = QLabel()
+            channel_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            channel_widget.setFixedSize(20, 20)
+            channel_widget.setText(str(i + 1))
+            channel_widget.setStyleSheet("""
+                QLabel {
+                    background-color: #3d3d3d;
+                    color: #888888;
+                    border-radius: 3px;
+                    font-size: 10px;
+                    font-weight: bold;
+                }
+            """)
+            row = i // 8
+            col = i % 8
+            self.grid_layout.addWidget(channel_widget, row, col)
+            self.channel_widgets.append(channel_widget)
+
+        layout.addLayout(self.grid_layout)
+
+    def update_theme(self, theme: str) -> None:
+        """
+        Update widget theme.
+
+        Args:
+            theme: Theme string ("dark" or "light").
+        """
+        self._current_theme = theme
+
+        # Update all channel widgets based on theme
+        for i, widget in enumerate(self.channel_widgets):
+            if i in self._scanned_channels:
+                # Scanned channels - green
+                if theme == "dark":
+                    widget.setStyleSheet("""
+                        QLabel {
+                            background-color: #51cf66;
+                            color: #000000;
+                            border-radius: 3px;
+                            font-size: 10px;
+                            font-weight: bold;
+                        }
+                    """)
+                else:
+                    widget.setStyleSheet("""
+                        QLabel {
+                            background-color: #2e7d32;
+                            color: #ffffff;
+                            border-radius: 3px;
+                            font-size: 10px;
+                            font-weight: bold;
+                        }
+                    """)
+            else:
+                # Unscanned channels - gray
+                if theme == "dark":
+                    widget.setStyleSheet("""
+                        QLabel {
+                            background-color: #3d3d3d;
+                            color: #888888;
+                            border-radius: 3px;
+                            font-size: 10px;
+                            font-weight: bold;
+                        }
+                    """)
+                else:
+                    widget.setStyleSheet("""
+                        QLabel {
+                            background-color: #e0e0e0;
+                            color: #666666;
+                            border-radius: 3px;
+                            font-size: 10px;
+                            font-weight: bold;
+                        }
+                    """)
+
+    def start_scan(self) -> None:
+        """Start scanning animation."""
+        self._scanned_channels.clear()
+        self._is_animating = True
+        self._reset_all_channels()
+
+    def update_channel(self, channel_num: int) -> None:
+        """
+        Update progress when a channel is scanned.
+
+        Args:
+            channel_num: Channel number (1-16).
+        """
+        if 1 <= channel_num <= self._total_channels:
+            self._scanned_channels.add(channel_num)
+            index = channel_num - 1
+            widget = self.channel_widgets[index]
+
+            # Set green color for scanned channel
+            if self._current_theme == "dark":
+                widget.setStyleSheet("""
+                    QLabel {
+                        background-color: #51cf66;
+                        color: #000000;
+                        border-radius: 3px;
+                        font-size: 10px;
+                        font-weight: bold;
+                    }
+                """)
+            else:
+                widget.setStyleSheet("""
+                    QLabel {
+                        background-color: #2e7d32;
+                        color: #ffffff;
+                        border-radius: 3px;
+                        font-size: 10px;
+                        font-weight: bold;
+                    }
+                """)
+
+    def complete_scan(self) -> None:
+        """Complete scanning animation."""
+        self._is_animating = False
+
+    def reset(self) -> None:
+        """Reset progress indicator to initial state."""
+        self._scanned_channels.clear()
+        self._is_animating = False
+        self._reset_all_channels()
+
+    def _reset_all_channels(self) -> None:
+        """Reset all channel widgets to default state."""
+        for widget in self.channel_widgets:
+            if self._current_theme == "dark":
+                widget.setStyleSheet("""
+                    QLabel {
+                        background-color: #3d3d3d;
+                        color: #888888;
+                        border-radius: 3px;
+                        font-size: 10px;
+                        font-weight: bold;
+                    }
+                """)
+            else:
+                widget.setStyleSheet("""
+                    QLabel {
+                        background-color: #e0e0e0;
+                        color: #666666;
+                        border-radius: 3px;
+                        font-size: 10px;
+                        font-weight: bold;
+                    }
+                """)
 
 
 class LogViewerDialog(QDialog):

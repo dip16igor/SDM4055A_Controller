@@ -34,7 +34,7 @@ from PySide6.QtWidgets import QStyle
 from hardware.visa_interface import VisaInterface, MeasurementType, ScanDataResult
 from hardware.async_worker import AsyncScanManager
 from hardware.simulator import VisaSimulator
-from gui.widgets import ChannelIndicator, LogViewerDialog, QLogHandler
+from gui.widgets import ChannelIndicator, LogViewerDialog, QLogHandler, ChannelProgressIndicator
 from gui.theme_manager import ThemeManager
 from config import ConfigLoader, ChannelThresholdConfig
 
@@ -229,12 +229,13 @@ class MainWindow(QMainWindow):
         self.btn_stop_scan.setEnabled(False)
         self.btn_stop_scan.setVisible(False)
 
-        self.lbl_scan_status = QLabel("Ready to scan")
+        # Channel progress indicator instead of text label
+        self.scan_progress = ChannelProgressIndicator()
 
         scan_layout.addWidget(self.btn_single_scan)
         scan_layout.addWidget(self.btn_start_scan)
         scan_layout.addWidget(self.btn_stop_scan)
-        scan_layout.addWidget(self.lbl_scan_status)
+        scan_layout.addWidget(self.scan_progress)
         
         # Configuration file section
         scan_layout.addSpacing(20)
@@ -746,6 +747,9 @@ class MainWindow(QMainWindow):
         for indicator in self.channel_indicators:
             indicator.update_theme(theme)
 
+        # Update progress indicator theme
+        self.scan_progress.update_theme(theme)
+
         # Update log viewer theme if open
         if self._log_viewer_dialog is not None and self._log_viewer_dialog.isVisible():
             self._log_viewer_dialog.update_theme(theme)
@@ -814,7 +818,7 @@ class MainWindow(QMainWindow):
             device_interface = self.visa
 
         self.status_updated.emit("Performing single scan...")
-        self.lbl_scan_status.setText("Scanning...")
+        self.scan_progress.start_scan()
         QApplication.processEvents()
 
         # Create temporary scan manager for single scan
@@ -829,6 +833,7 @@ class MainWindow(QMainWindow):
 
         # Connect signals
         temp_scan_manager.scan_complete.connect(self._on_single_scan_complete)
+        temp_scan_manager.channel_read.connect(self._on_channel_read)
 
         # Perform single scan
         temp_scan_manager.perform_single_scan()
@@ -840,7 +845,7 @@ class MainWindow(QMainWindow):
         self.btn_start_scan.setEnabled(False)
         self.btn_stop_scan.setEnabled(True)
         self.btn_single_scan.setEnabled(True)
-        self.lbl_scan_status.setText("Scanning...")
+        self.scan_progress.start_scan()
         self.status_updated.emit("Scanning started")
 
     @Slot(object)
@@ -867,9 +872,8 @@ class MainWindow(QMainWindow):
                     # Valid measurement - update with value and unit
                     indicator.set_value(result.value, result.unit)
 
-        # Update status
-        self.lbl_scan_status.setText(
-            f"Scan complete - {len(measurements)} channels")
+        # Update progress indicator
+        self.scan_progress.complete_scan()
         self.status_updated.emit(
             f"Scan complete - {len(measurements)} channels measured")
 
@@ -879,7 +883,7 @@ class MainWindow(QMainWindow):
         self.btn_start_scan.setEnabled(True)
         self.btn_stop_scan.setEnabled(False)
         self.btn_single_scan.setEnabled(True)
-        self.lbl_scan_status.setText("Scan stopped")
+        self.scan_progress.reset()
         self.status_updated.emit("Scanning stopped")
         logger.info("Scan stopped, UI updated")
 
@@ -901,7 +905,7 @@ class MainWindow(QMainWindow):
                 "Please enter a serial number before scanning.\n"
                 "The serial number is required for the report."
             )
-            self.lbl_scan_status.setText("Scan complete - missing serial number")
+            self.scan_progress.reset()
             logger.warning("Scan complete but no serial number provided")
             return
 
@@ -914,7 +918,7 @@ class MainWindow(QMainWindow):
                 "Please enter a valid serial number in format PSN123456789.\n"
                 "The serial number must start with PSN followed by exactly 9 digits."
             )
-            self.lbl_scan_status.setText("Scan complete - invalid serial number")
+            self.scan_progress.reset()
             logger.warning(f"Scan complete but invalid serial number format: {serial_number}")
             return
 
@@ -948,9 +952,8 @@ class MainWindow(QMainWindow):
             self.serial_number_input.setStyleSheet("color: white;")
             logger.info(f"Serial number '{serial_number}' not found in report, set white color")
 
-        # Update status
-        self.lbl_scan_status.setText(
-            f"Scan complete - {len(measurements)} channels")
+        # Update progress indicator
+        self.scan_progress.complete_scan()
         self.status_updated.emit(
             f"Single scan complete - {len(measurements)} channels measured")
 
@@ -963,6 +966,9 @@ class MainWindow(QMainWindow):
             result: ScanDataResult object or None
         """
         logger.debug(f"Channel {channel_num} read: {result}")
+
+        # Update progress indicator
+        self.scan_progress.update_channel(channel_num)
 
         # Only update indicator if scan is still running
         # Don't set status here - let _on_scan_complete handle final display
