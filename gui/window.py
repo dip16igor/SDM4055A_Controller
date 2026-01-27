@@ -838,6 +838,9 @@ class MainWindow(QMainWindow):
         # Perform single scan
         temp_scan_manager.perform_single_scan()
         logger.info("Single scan initiated")
+        
+        # Process events to allow GUI to update
+        QApplication.processEvents()
 
     @Slot()
     def _on_scan_started(self) -> None:
