@@ -1286,8 +1286,8 @@ class LogViewerWidget(QWidget):
 
 class ChannelProgressIndicator(QWidget):
     """
-    Animated progress indicator showing scanning progress across 16 channels.
-    Displays 16 channel segments that animate as channels are scanned.
+    Compact animated progress indicator for scanning process.
+    Shows a simple spinning animation during scanning.
     """
 
     def __init__(self, parent=None):
@@ -1299,46 +1299,48 @@ class ChannelProgressIndicator(QWidget):
         """
         super().__init__(parent)
 
-        self._total_channels = 16
-        self._scanned_channels = set()
         self._current_theme = "dark"
-        self._is_animating = False
+        self._is_scanning = False
+        self._animation_timer = None
 
         # Setup UI
         self._setup_ui()
 
     def _setup_ui(self) -> None:
         """Setup widget's UI components."""
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(2)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        # Create grid for 16 channel indicators
-        self.grid_layout = QGridLayout()
-        self.grid_layout.setSpacing(3)
+        # Create label for spinning animation
+        self.spinner_label = QLabel()
+        self.spinner_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.spinner_label.setFixedSize(24, 24)
+        self.spinner_label.setStyleSheet("""
+            QLabel {
+                background-color: transparent;
+                color: #4a9eff;
+                font-size: 18px;
+                font-weight: bold;
+            }
+        """)
+        self.spinner_label.setText("◌")  # Start with X icon
 
-        # Create channel indicator widgets
-        self.channel_widgets = []
-        for i in range(self._total_channels):
-            channel_widget = QLabel()
-            channel_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            channel_widget.setFixedSize(20, 20)
-            channel_widget.setText(str(i + 1))
-            channel_widget.setStyleSheet("""
-                QLabel {
-                    background-color: #3d3d3d;
-                    color: #888888;
-                    border-radius: 3px;
-                    font-size: 10px;
-                    font-weight: bold;
-                }
-            """)
-            row = i // 8
-            col = i % 8
-            self.grid_layout.addWidget(channel_widget, row, col)
-            self.channel_widgets.append(channel_widget)
+        # Create text label
+        self.text_label = QLabel("Ready")
+        self.text_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.text_label.setStyleSheet("""
+            QLabel {
+                background-color: transparent;
+                color: #888888;
+                font-size: 11px;
+                padding-left: 8px;
+            }
+        """)
 
-        layout.addLayout(self.grid_layout)
+        layout.addWidget(self.spinner_label)
+        layout.addWidget(self.text_label)
+        layout.addStretch()
 
     def update_theme(self, theme: str) -> None:
         """
@@ -1349,126 +1351,115 @@ class ChannelProgressIndicator(QWidget):
         """
         self._current_theme = theme
 
-        # Update all channel widgets based on theme
-        for i, widget in enumerate(self.channel_widgets):
-            if i in self._scanned_channels:
-                # Scanned channels - green
-                if theme == "dark":
-                    widget.setStyleSheet("""
-                        QLabel {
-                            background-color: #51cf66;
-                            color: #000000;
-                            border-radius: 3px;
-                            font-size: 10px;
-                            font-weight: bold;
-                        }
-                    """)
-                else:
-                    widget.setStyleSheet("""
-                        QLabel {
-                            background-color: #2e7d32;
-                            color: #ffffff;
-                            border-radius: 3px;
-                            font-size: 10px;
-                            font-weight: bold;
-                        }
-                    """)
-            else:
-                # Unscanned channels - gray
-                if theme == "dark":
-                    widget.setStyleSheet("""
-                        QLabel {
-                            background-color: #3d3d3d;
-                            color: #888888;
-                            border-radius: 3px;
-                            font-size: 10px;
-                            font-weight: bold;
-                        }
-                    """)
-                else:
-                    widget.setStyleSheet("""
-                        QLabel {
-                            background-color: #e0e0e0;
-                            color: #666666;
-                            border-radius: 3px;
-                            font-size: 10px;
-                            font-weight: bold;
-                        }
-                    """)
+        if theme == "dark":
+            self.spinner_label.setStyleSheet("""
+                QLabel {
+                    background-color: transparent;
+                    color: #4a9eff;
+                    font-size: 18px;
+                    font-weight: bold;
+                }
+            """)
+            self.text_label.setStyleSheet("""
+                QLabel {
+                    background-color: transparent;
+                    color: #888888;
+                    font-size: 11px;
+                    padding-left: 8px;
+                }
+            """)
+        else:
+            self.spinner_label.setStyleSheet("""
+                QLabel {
+                    background-color: transparent;
+                    color: #4a9eff;
+                    font-size: 18px;
+                    font-weight: bold;
+                }
+            """)
+            self.text_label.setStyleSheet("""
+                QLabel {
+                    background-color: transparent;
+                    color: #666666;
+                    font-size: 11px;
+                    padding-left: 8px;
+                }
+            """)
 
     def start_scan(self) -> None:
         """Start scanning animation."""
-        self._scanned_channels.clear()
-        self._is_animating = True
-        self._reset_all_channels()
+        self._is_scanning = True
+        self.text_label.setText("Scanning...")
 
-    def update_channel(self, channel_num: int) -> None:
-        """
-        Update progress when a channel is scanned.
+        # Start spinning animation
+        if self._animation_timer is None:
+            from PySide6.QtCore import QTimer
+            self._animation_timer = QTimer(self)
+            self._animation_timer.timeout.connect(self._animate_spinner)
+            self._animation_timer.start(100)  # Update every 100ms
+            self._animation_step = 0
 
-        Args:
-            channel_num: Channel number (1-16).
-        """
-        if 1 <= channel_num <= self._total_channels:
-            self._scanned_channels.add(channel_num)
-            index = channel_num - 1
-            widget = self.channel_widgets[index]
+    def _animate_spinner(self) -> None:
+        """Animate the spinner icon."""
+        if not self._is_scanning:
+            return
 
-            # Set green color for scanned channel
-            if self._current_theme == "dark":
-                widget.setStyleSheet("""
-                    QLabel {
-                        background-color: #51cf66;
-                        color: #000000;
-                        border-radius: 3px;
-                        font-size: 10px;
-                        font-weight: bold;
-                    }
-                """)
-            else:
-                widget.setStyleSheet("""
-                    QLabel {
-                        background-color: #2e7d32;
-                        color: #ffffff;
-                        border-radius: 3px;
-                        font-size: 10px;
-                        font-weight: bold;
-                    }
-                """)
+        # Cycle through spinner characters
+        spinners = ["|", "/", "-", "\\"]
+        self.spinner_label.setText(spinners[self._animation_step % len(spinners)])
+        self._animation_step += 1
 
     def complete_scan(self) -> None:
         """Complete scanning animation."""
-        self._is_animating = False
+        self._is_scanning = False
+
+        # Stop animation
+        if self._animation_timer is not None:
+            self._animation_timer.stop()
+            self._animation_timer = None
+
+        # Show checkmark
+        self.spinner_label.setText("✓")
+        self.spinner_label.setStyleSheet("""
+            QLabel {
+                background-color: transparent;
+                color: #51cf66;
+                font-size: 18px;
+                font-weight: bold;
+            }
+        """)
+        self.text_label.setText("Done")
 
     def reset(self) -> None:
         """Reset progress indicator to initial state."""
-        self._scanned_channels.clear()
-        self._is_animating = False
-        self._reset_all_channels()
+        self._is_scanning = False
 
-    def _reset_all_channels(self) -> None:
-        """Reset all channel widgets to default state."""
-        for widget in self.channel_widgets:
-            if self._current_theme == "dark":
-                widget.setStyleSheet("""
-                    QLabel {
-                        background-color: #3d3d3d;
-                        color: #888888;
-                        border-radius: 3px;
-                        font-size: 10px;
-                        font-weight: bold;
-                    }
-                """)
-            else:
-                widget.setStyleSheet("""
-                    QLabel {
-                        background-color: #e0e0e0;
-                        color: #666666;
-                        border-radius: 3px;
-                        font-size: 10px;
-                        font-weight: bold;
-                    }
-                """)
+        # Stop animation
+        if self._animation_timer is not None:
+            self._animation_timer.stop()
+            self._animation_timer = None
+
+        # Reset to initial state
+        self.spinner_label.setText("◌")
+        if self._current_theme == "dark":
+            self.spinner_label.setStyleSheet("""
+                QLabel {
+                    background-color: transparent;
+                    color: #4a9eff;
+                    font-size: 18px;
+                    font-weight: bold;
+                }
+            """)
+        else:
+            self.spinner_label.setStyleSheet("""
+                QLabel {
+                    background-color: transparent;
+                    color: #4a9eff;
+                    font-size: 18px;
+                    font-weight: bold;
+                }
+            """)
+        self.text_label.setText("Ready")
 
 
 class LogViewerDialog(QDialog):

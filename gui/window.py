@@ -967,9 +967,6 @@ class MainWindow(QMainWindow):
         """
         logger.debug(f"Channel {channel_num} read: {result}")
 
-        # Update progress indicator
-        self.scan_progress.update_channel(channel_num)
-
         # Only update indicator if scan is still running
         # Don't set status here - let _on_scan_complete handle final display
         if 1 <= channel_num <= 16:
