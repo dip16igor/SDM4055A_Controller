@@ -877,9 +877,6 @@ class MainWindow(QMainWindow):
 
         # Update progress indicator
         self.scan_progress.complete_scan()
-        # Reset progress indicator after short delay
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(500, self.scan_progress.reset)
         self.status_updated.emit(
             f"Scan complete - {len(measurements)} channels measured")
 
