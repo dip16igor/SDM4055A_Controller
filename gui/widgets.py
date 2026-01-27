@@ -1337,6 +1337,7 @@ class ChannelProgressIndicator(QWidget):
                 padding-left: 8px;
             }
         """)
+        self.text_label.setVisible(False)  # Hide initially
 
         layout.addWidget(self.spinner_label)
         layout.addWidget(self.text_label)
@@ -1389,7 +1390,6 @@ class ChannelProgressIndicator(QWidget):
     def start_scan(self) -> None:
         """Start scanning animation."""
         self._is_scanning = True
-        self.text_label.setText("Scanning...")
 
         # Start spinning animation
         if self._animation_timer is None:
@@ -1428,7 +1428,6 @@ class ChannelProgressIndicator(QWidget):
                 font-weight: bold;
             }
         """)
-        self.text_label.setText("Done")
 
     def reset(self) -> None:
         """Reset progress indicator to initial state."""
@@ -1459,7 +1458,6 @@ class ChannelProgressIndicator(QWidget):
                     font-weight: bold;
                 }
             """)
-        self.text_label.setText("Ready")
 
 
 class LogViewerDialog(QDialog):
