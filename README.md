@@ -196,6 +196,25 @@ flake8 .
 
 [Add your license information here]
 
+## Recent Changes
+
+### 2026-01-28 - Animated Progress Indicator for Single Scan
+- **Added**: Animated progress indicator widget (`ChannelProgressIndicator`) to replace text status label
+- **Features**:
+  - Spinning animation (| / - \) during scanning
+  - Checkmark (✓) displayed briefly after scan completes
+  - Resets to X icon (◌) after 500ms
+  - Theme-aware styling for both dark and light modes
+- **Removed**: All text labels near Scan button
+- **Fixed**: GUI freezing issue during single scan operations
+  - Implemented `SingleScanWorker` class to perform single scan in background thread
+  - Added proper thread lifecycle management to prevent "QThread: Destroyed while thread is still running" errors
+  - Status bar now shows "Ready" after single scan completion
+- **Files Modified**:
+  - `gui/widgets.py`: Added `ChannelProgressIndicator` class, removed text labels
+  - `hardware/async_worker.py`: Added `SingleScanWorker` class, updated `AsyncScanManager.start_single_scan()` method
+  - `gui/window.py`: Integrated progress indicator, added temporary manager reference management
+
 ## Support
 
 For issues, questions, or contributions:

@@ -208,7 +208,7 @@ class MainWindow(QMainWindow):
         self.lbl_serial_number = QLabel("Serial Number:")
         self.serial_number_input = ClickToClearLineEdit()
         self.serial_number_input.setPlaceholderText("PSN123456789")
-        self.serial_number_input.setMaximumWidth(150)
+        self.serial_number_input.setMinimumWidth(140)
         self.serial_number_input.textChanged.connect(self._on_serial_number_changed)
         
         scan_layout.addWidget(self.lbl_serial_number)
