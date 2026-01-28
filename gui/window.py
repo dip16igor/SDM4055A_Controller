@@ -836,6 +836,9 @@ class MainWindow(QMainWindow):
         temp_scan_manager.scan_started.connect(self._on_single_scan_started)
         temp_scan_manager.scan_error.connect(self._on_single_scan_error)
 
+        # Keep reference to temporary manager to prevent premature garbage collection
+        self._temp_scan_manager = temp_scan_manager
+
         # Perform single scan asynchronously (non-blocking)
         temp_scan_manager.start_single_scan()
         logger.info("Single scan initiated")
@@ -896,6 +899,10 @@ class MainWindow(QMainWindow):
             measurements: Dictionary mapping channel numbers to ScanDataResult objects (or None)
         """
         logger.info(f"Single scan complete. Measurements: {measurements}")
+
+        # Clear temporary scan manager reference to allow cleanup
+        if hasattr(self, '_temp_scan_manager') and self._temp_scan_manager:
+            self._temp_scan_manager = None
 
         # Re-enable single scan button
         self.btn_single_scan.setEnabled(True)

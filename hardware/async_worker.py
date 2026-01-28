@@ -116,6 +116,100 @@ class ScanWorker(QObject):
         logger.info("Scan worker stop requested")
 
 
+class SingleScanWorker(QObject):
+    """
+    Worker object that performs a single scan operation in a background thread.
+    
+    This worker runs a one-time scan in a separate QThread to prevent UI blocking.
+    All communication with main thread is done via Qt signals.
+    """
+    
+    # Signals for communication with main thread
+    scan_complete = Signal(object)  # Emitted when scan completes with results
+    scan_error = Signal(str)  # Emitted when an error occurs
+    channel_read = Signal(int, object)  # Emitted when a single channel is read
+    scan_started = Signal()  # Emitted when scanning starts
+    
+    def __init__(self, device, channel_configs: dict):
+        """
+        Initialize single scan worker.
+        
+        Args:
+            device: Device interface (VisaInterface or VisaSimulator)
+            channel_configs: Dictionary of channel configurations
+        """
+        super().__init__()
+        self._device = device
+        self._channel_configs = channel_configs
+    
+    def run_single_scan(self) -> None:
+        """Perform a single scan of all channels."""
+        if not self._device.is_connected():
+            error_msg = "Device not connected"
+            logger.error(error_msg)
+            self.scan_error.emit(error_msg)
+            # Quit thread event loop to prevent hanging
+            from PySide6.QtCore import QThread
+            QThread.currentThread().quit()
+            return
+        
+        try:
+            # Emit scan started signal
+            self.scan_started.emit()
+            
+            # Configure channels if configurations exist
+            if self._channel_configs:
+                for channel_num, config in self._channel_configs.items():
+                    # Get measurement type and range from config dict
+                    measurement_type_str = config.get('measurement_type')
+                    range_value = config.get('range_value', 'AUTO')
+                    
+                    # Convert string to MeasurementType enum
+                    try:
+                        measurement_type = MeasurementType(measurement_type_str)
+                    except ValueError:
+                        logger.error(f"Invalid measurement type for channel {channel_num}: {measurement_type_str}")
+                        self.scan_error.emit(f"Invalid measurement type for channel {channel_num}")
+                        QThread.currentThread().quit()
+                        return
+                    
+                    # Set channel measurement type
+                    if not self._device.set_channel_measurement_type(channel_num, measurement_type):
+                        logger.error(f"Failed to set measurement type for channel {channel_num}")
+                        self.scan_error.emit(f"Failed to configure channel {channel_num}")
+                        QThread.currentThread().quit()
+                        return
+                    
+                    # Set channel range
+                    if not self._device.set_channel_range(channel_num, range_value):
+                        logger.error(f"Failed to set range for channel {channel_num}")
+                        self.scan_error.emit(f"Failed to configure channel {channel_num}")
+                        QThread.currentThread().quit()
+                        return
+            
+            # Read all channels
+            measurements = self._device.read_all_channels()
+            
+            # Emit results
+            self.scan_complete.emit(measurements)
+            
+            # Also emit individual channel reads for progress feedback
+            for channel_num, value in measurements.items():
+                if value is not None:
+                    self.channel_read.emit(channel_num, value)
+            
+            logger.info(f"Single scan completed: {len(measurements)} channels read")
+            
+        except Exception as e:
+            error_msg = f"Single scan error: {str(e)}"
+            logger.error(error_msg)
+            self.scan_error.emit(error_msg)
+        
+        # Quit thread event loop to prevent hanging
+        from PySide6.QtCore import QThread
+        QThread.currentThread().quit()
+
+
 class AsyncScanManager(QObject):
     """
     Manager for async scanning operations.
@@ -321,10 +415,10 @@ class AsyncScanManager(QObject):
 
     def start_single_scan(self) -> bool:
         """
-        Start a single scan synchronously with periodic GUI updates.
+        Start a single scan asynchronously in a background thread.
 
-        This method performs a single scan in the calling thread but calls
-        QApplication.processEvents() periodically to keep the UI responsive.
+        This method creates a temporary thread to perform a single scan,
+        keeping the UI responsive during device I/O operations.
 
         Returns:
             True if started successfully, False otherwise.
@@ -345,27 +439,56 @@ class AsyncScanManager(QObject):
                     self.scan_error.emit("Channel configuration failed")
                     return False
 
+            # Create temporary thread for single scan
+            self._single_scan_thread = QThread()
+            self._single_scan_thread.setObjectName("SingleScanThread")  # Set thread name for debugging
+            
+            self._single_scan_worker = SingleScanWorker(self._device, self._channel_configs)
+            self._single_scan_worker.moveToThread(self._single_scan_thread)
+
+            # Forward worker signals to manager signals
+            self._single_scan_worker.scan_complete.connect(self._on_single_scan_complete)
+            self._single_scan_worker.scan_error.connect(self.scan_error)
+            self._single_scan_worker.channel_read.connect(self.channel_read)
+            self._single_scan_worker.scan_started.connect(self.scan_started)
+
+            # Connect thread lifecycle
+            self._single_scan_thread.started.connect(self._single_scan_worker.run_single_scan)
+            self._single_scan_thread.finished.connect(self._on_single_scan_thread_finished)
+
             # Mark as scanning
             self._scanning = True
 
-            # Emit scan started signal
-            self.scan_started.emit()
+            # Start thread
+            self._single_scan_thread.start()
             logger.info("Single scan started")
-
-            # Perform single scan synchronously with periodic GUI updates
-            from PySide6.QtWidgets import QApplication
-            self.perform_single_scan()
-
-            # Mark as not scanning
-            self._scanning = False
-
-            logger.info("Single scan completed")
             return True
 
         except Exception as e:
             logger.error(f"Failed to start single scan: {e}")
             self._cleanup()
             return False
+
+    def _on_single_scan_complete(self, measurements: dict) -> None:
+        """Handle single scan completion from worker."""
+        # Forward to manager's scan_complete signal
+        self.scan_complete.emit(measurements)
+
+    def _on_single_scan_thread_finished(self) -> None:
+        """Handle single scan thread finished."""
+        logger.debug("Single scan thread finished")
+        self._scanning = False
+        
+        # Clean up thread and worker
+        # Note: Don't explicitly delete thread/worker - let Qt manage lifecycle naturally
+        # This prevents "QThread: Destroyed while thread is still running" errors
+        if hasattr(self, '_single_scan_thread') and self._single_scan_thread:
+            # Just clear the reference, let Qt clean up when ready
+            self._single_scan_thread = None
+        
+        if hasattr(self, '_single_scan_worker') and self._single_scan_worker:
+            # Just clear the reference, let Qt clean up when ready
+            self._single_scan_worker = None
 
     def connect_signals(self,
                         on_scan_complete=None,
