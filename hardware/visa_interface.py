@@ -263,10 +263,14 @@ class VisaInterface:
             logger.warning(f"Device not responsive: {e}")
             # Mark device as disconnected if we get a VISA error
             self._connected = False
+            # Call disconnect to properly clean up VISA resources
+            self.disconnect()
             return False
         except Exception as e:
             logger.warning(f"Unexpected error checking device responsiveness: {e}")
             self._connected = False
+            # Call disconnect to properly clean up VISA resources
+            self.disconnect()
             return False
 
     def read_measurement(self) -> Optional[float]:
@@ -827,7 +831,7 @@ class VisaInterface:
             # Check if device is still responsive before attempting operations
             if not self._check_device_responsive():
                 logger.error("Device is not responsive - marking as disconnected")
-                self._connected = False
+                # Device is already disconnected by _check_device_responsive(), return empty results
                 return {}
 
             try:

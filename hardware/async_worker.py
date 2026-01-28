@@ -87,6 +87,14 @@ class ScanWorker(QObject):
                     self.scan_error.emit(error_msg)
                     break
 
+                # Check if measurements are empty (indicates device disconnection)
+                # Empty dict is truthy in Python, so check length
+                if not measurements or len(measurements) == 0:
+                    error_msg = "Device disconnected - no measurements received"
+                    logger.error(error_msg)
+                    self.scan_error.emit(error_msg)
+                    break
+
                 # Emit results
                 self.scan_complete.emit(measurements)
 
@@ -208,6 +216,14 @@ class SingleScanWorker(QObject):
             # Check if device got disconnected during read
             if not self._device.is_connected():
                 error_msg = "Device disconnected during scan"
+                logger.error(error_msg)
+                self.scan_error.emit(error_msg)
+                QThread.currentThread().quit()
+                return
+            
+            # Check if measurements are empty (indicates device disconnection)
+            if not measurements:
+                error_msg = "Device disconnected - no measurements received"
                 logger.error(error_msg)
                 self.scan_error.emit(error_msg)
                 QThread.currentThread().quit()
@@ -423,6 +439,13 @@ class AsyncScanManager(QObject):
             # Check if device got disconnected during read
             if not self._device.is_connected():
                 error_msg = "Device disconnected during scan"
+                logger.error(error_msg)
+                self.scan_error.emit(error_msg)
+                return
+            
+            # Check if measurements are empty (indicates device disconnection)
+            if not measurements:
+                error_msg = "Device disconnected - no measurements received"
                 logger.error(error_msg)
                 self.scan_error.emit(error_msg)
                 return
