@@ -268,38 +268,22 @@ class MainWindow(QMainWindow):
         report_buttons_layout.setContentsMargins(0, 0, 0, 0)
         report_buttons_layout.setSpacing(10)
         
-        # Vertical layout for Select Report File button and its label
-        select_layout = QVBoxLayout()
-        select_layout.setContentsMargins(0, 0, 0, 0)
-        select_layout.setSpacing(2)
-        
         self.btn_select_report_file = QPushButton("Select Report File")
         self.btn_select_report_file.clicked.connect(self._on_select_report_file)
-        self.lbl_report_file_select = QLabel("No report file selected")
-        self.lbl_report_file_select.setStyleSheet("color: #888; font-style: italic;")
-        self.lbl_report_file_select.setWordWrap(True)
-        
-        select_layout.addWidget(self.btn_select_report_file)
-        select_layout.addWidget(self.lbl_report_file_select)
-        
-        # Vertical layout for New Report File button and its label
-        new_layout = QVBoxLayout()
-        new_layout.setContentsMargins(0, 0, 0, 0)
-        new_layout.setSpacing(2)
-        
         self.btn_new_report_file = QPushButton("New Report File")
         self.btn_new_report_file.clicked.connect(self._on_new_report_file)
-        self.lbl_report_file_new = QLabel("No report file selected")
-        self.lbl_report_file_new.setStyleSheet("color: #888; font-style: italic;")
-        self.lbl_report_file_new.setWordWrap(True)
         
-        new_layout.addWidget(self.btn_new_report_file)
-        new_layout.addWidget(self.lbl_report_file_new)
-        
-        report_buttons_layout.addLayout(select_layout)
-        report_buttons_layout.addLayout(new_layout)
+        report_buttons_layout.addWidget(self.btn_select_report_file)
+        report_buttons_layout.addWidget(self.btn_new_report_file)
         
         report_layout.addLayout(report_buttons_layout)
+        
+        # Single shared label for report file name
+        self.lbl_report_file = QLabel("No report file selected")
+        self.lbl_report_file.setStyleSheet("color: #888; font-style: italic;")
+        self.lbl_report_file.setWordWrap(True)
+        report_layout.addWidget(self.lbl_report_file)
+        
         scan_layout.addLayout(report_layout)
         scan_layout.addStretch()
 
@@ -1378,12 +1362,10 @@ class MainWindow(QMainWindow):
         # Store the selected file path
         self._report_file_path = file_path
         
-        # Update both labels to show the filename
+        # Update the shared label to show the filename
         filename = os.path.basename(file_path)
-        self.lbl_report_file_select.setText(filename)
-        self.lbl_report_file_select.setStyleSheet("color: #51cf66; font-weight: bold;")
-        self.lbl_report_file_new.setText(filename)
-        self.lbl_report_file_new.setStyleSheet("color: #51cf66; font-weight: bold;")
+        self.lbl_report_file.setText(filename)
+        self.lbl_report_file.setStyleSheet("color: #51cf66; font-weight: bold;")
         
         self.status_updated.emit(f"Report file selected: {filename}")
         logger.info(f"Report file selected: {file_path}")
@@ -1413,12 +1395,10 @@ class MainWindow(QMainWindow):
             # Store the file path
             self._report_file_path = file_path
             
-            # Update both labels to show the filename
+            # Update the shared label to show the filename
             filename = os.path.basename(file_path)
-            self.lbl_report_file_select.setText(filename)
-            self.lbl_report_file_select.setStyleSheet("color: #51cf66; font-weight: bold;")
-            self.lbl_report_file_new.setText(filename)
-            self.lbl_report_file_new.setStyleSheet("color: #51cf66; font-weight: bold;")
+            self.lbl_report_file.setText(filename)
+            self.lbl_report_file.setStyleSheet("color: #51cf66; font-weight: bold;")
             
             self.status_updated.emit(f"New report file created: {filename}")
             logger.info(f"New report file created: {file_path}")
