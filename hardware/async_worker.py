@@ -219,7 +219,7 @@ class AsyncScanManager(QObject):
                 # Get measurement type and range from config dict
                 measurement_type_str = config.get('measurement_type')
                 range_value = config.get('range_value', 'AUTO')
-                
+
                 # Convert string to MeasurementType enum
                 try:
                     measurement_type = MeasurementType(measurement_type_str)
@@ -233,7 +233,7 @@ class AsyncScanManager(QObject):
                     logger.error(
                         f"Failed to set measurement type for channel {channel_num}")
                     return False
-                
+
                 # Set channel range
                 if not self._device.set_channel_range(channel_num, range_value):
                     logger.error(
@@ -284,7 +284,7 @@ class AsyncScanManager(QObject):
         Perform a single scan of all channels without starting continuous scanning.
 
         This method executes a one-time scan and emits the scan_complete signal
-        with the results. It runs synchronously in the calling thread.
+        with results. It runs synchronously in the calling thread.
         """
         if not self._device.is_connected():
             logger.error("Cannot perform single scan: device not connected")
@@ -319,16 +319,53 @@ class AsyncScanManager(QObject):
             logger.error(error_msg)
             self.scan_error.emit(error_msg)
 
-    def set_interval(self, interval_ms: int) -> None:
+    def start_single_scan(self) -> bool:
         """
-        Update scan interval while scanning.
+        Start a single scan synchronously with periodic GUI updates.
 
-        Args:
-            interval_ms: New interval in milliseconds.
+        This method performs a single scan in the calling thread but calls
+        QApplication.processEvents() periodically to keep the UI responsive.
+
+        Returns:
+            True if started successfully, False otherwise.
         """
-        if self._worker:
-            self._worker.set_interval(interval_ms)
-            logger.info(f"Scan interval updated to {interval_ms}ms")
+        if self._scanning:
+            logger.warning("Scanning already active")
+            return False
+
+        if not self._device.is_connected():
+            logger.error("Cannot start single scan: device not connected")
+            return False
+
+        try:
+            # Set channel configurations
+            if self._channel_configs:
+                if not self.configure_channels(self._channel_configs):
+                    logger.error("Failed to configure channels for single scan")
+                    self.scan_error.emit("Channel configuration failed")
+                    return False
+
+            # Mark as scanning
+            self._scanning = True
+
+            # Emit scan started signal
+            self.scan_started.emit()
+            logger.info("Single scan started")
+
+            # Perform single scan synchronously with periodic GUI updates
+            from PySide6.QtWidgets import QApplication
+            self.perform_single_scan()
+
+            # Mark as not scanning
+            self._scanning = False
+
+            logger.info("Single scan completed")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to start single scan: {e}")
+            self._cleanup()
+            return False
 
     def connect_signals(self,
                         on_scan_complete=None,

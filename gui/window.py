@@ -819,7 +819,6 @@ class MainWindow(QMainWindow):
 
         self.status_updated.emit("Performing single scan...")
         self.scan_progress.start_scan()
-        QApplication.processEvents()
 
         # Create temporary scan manager for single scan
         temp_scan_manager = AsyncScanManager(device_interface)
@@ -834,13 +833,12 @@ class MainWindow(QMainWindow):
         # Connect signals
         temp_scan_manager.scan_complete.connect(self._on_single_scan_complete)
         temp_scan_manager.channel_read.connect(self._on_channel_read)
+        temp_scan_manager.scan_started.connect(self._on_single_scan_started)
+        temp_scan_manager.scan_error.connect(self._on_single_scan_error)
 
-        # Perform single scan
-        temp_scan_manager.perform_single_scan()
+        # Perform single scan asynchronously (non-blocking)
+        temp_scan_manager.start_single_scan()
         logger.info("Single scan initiated")
-        
-        # Process events to allow GUI to update
-        QApplication.processEvents()
 
     @Slot()
     def _on_scan_started(self) -> None:
@@ -898,6 +896,9 @@ class MainWindow(QMainWindow):
             measurements: Dictionary mapping channel numbers to ScanDataResult objects (or None)
         """
         logger.info(f"Single scan complete. Measurements: {measurements}")
+
+        # Re-enable single scan button
+        self.btn_single_scan.setEnabled(True)
 
         # Check if serial number is provided
         serial_number = self.serial_number_input.text().strip()
@@ -957,8 +958,29 @@ class MainWindow(QMainWindow):
 
         # Update progress indicator
         self.scan_progress.complete_scan()
-        self.status_updated.emit(
-            f"Single scan complete - {len(measurements)} channels measured")
+        self.status_updated.emit("Ready")
+
+    @Slot()
+    def _on_single_scan_started(self) -> None:
+        """Handle single scan started signal."""
+        self.btn_single_scan.setEnabled(False)
+        logger.info("Single scan started")
+
+    @Slot(str)
+    def _on_single_scan_error(self, error_msg: str) -> None:
+        """Handle single scan error signal.
+        
+        Args:
+            error_msg: Error message string.
+        """
+        logger.error(f"Single scan error: {error_msg}")
+        self.scan_progress.reset()
+        self.btn_single_scan.setEnabled(True)
+        QMessageBox.critical(
+            self,
+            "Scan Error",
+            f"Failed to perform scan:\n{error_msg}"
+        )
 
     @Slot(int, object)
     def _on_channel_read(self, channel_num: int, result: object) -> None:
