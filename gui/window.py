@@ -243,26 +243,38 @@ class MainWindow(QMainWindow):
         
         # Configuration file section
         scan_layout.addSpacing(20)
+        config_layout = QVBoxLayout()
+        config_layout.setContentsMargins(0, 0, 0, 0)
+        config_layout.setSpacing(2)
+        
         self.btn_load_config = QPushButton("Load Config")
         self.btn_load_config.clicked.connect(self._on_load_config_clicked)
         self.lbl_config_file = QLabel("No config loaded")
         self.lbl_config_file.setStyleSheet("color: #888; font-style: italic;")
+        self.lbl_config_file.setWordWrap(True)
         
-        scan_layout.addWidget(self.btn_load_config)
-        scan_layout.addWidget(self.lbl_config_file)
+        config_layout.addWidget(self.btn_load_config)
+        config_layout.addWidget(self.lbl_config_file)
+        scan_layout.addLayout(config_layout)
         scan_layout.addSpacing(20)
 
         # Report file section
+        report_layout = QVBoxLayout()
+        report_layout.setContentsMargins(0, 0, 0, 0)
+        report_layout.setSpacing(2)
+        
         self.btn_select_report_file = QPushButton("Select Report File")
         self.btn_select_report_file.clicked.connect(self._on_select_report_file)
         self.btn_new_report_file = QPushButton("New Report File")
         self.btn_new_report_file.clicked.connect(self._on_new_report_file)
         self.lbl_report_file = QLabel("No report file selected")
         self.lbl_report_file.setStyleSheet("color: #888; font-style: italic;")
+        self.lbl_report_file.setWordWrap(True)
 
-        scan_layout.addWidget(self.btn_select_report_file)
-        scan_layout.addWidget(self.btn_new_report_file)
-        scan_layout.addWidget(self.lbl_report_file)
+        report_layout.addWidget(self.btn_select_report_file)
+        report_layout.addWidget(self.btn_new_report_file)
+        report_layout.addWidget(self.lbl_report_file)
+        scan_layout.addLayout(report_layout)
         scan_layout.addStretch()
 
         scan_group.setLayout(scan_layout)
