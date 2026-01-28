@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 from PySide6.QtCore import QObject, Signal, Slot, Qt
-from PySide6.QtGui import QAction, QMouseEvent, QIcon, QPainter, QPainterPath, QColor
+from PySide6.QtGui import QAction, QMouseEvent, QIcon, QPainter, QPainterPath, QColor, QFontMetrics
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -208,7 +208,11 @@ class MainWindow(QMainWindow):
         self.lbl_serial_number = QLabel("Serial Number:")
         self.serial_number_input = ClickToClearLineEdit()
         self.serial_number_input.setPlaceholderText("PSN123456789")
-        self.serial_number_input.setMinimumWidth(140)
+        # Calculate width based on font metrics for 12 characters (PSN + 9 digits)
+        font_metrics = QFontMetrics(self.serial_number_input.font())
+        text_width = font_metrics.horizontalAdvance("PSN123456789")
+        # Add padding for text margins and border
+        self.serial_number_input.setMinimumWidth(text_width + 20)
         self.serial_number_input.textChanged.connect(self._on_serial_number_changed)
         
         scan_layout.addWidget(self.lbl_serial_number)
