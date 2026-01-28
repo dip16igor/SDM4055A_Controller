@@ -278,11 +278,25 @@ class MainWindow(QMainWindow):
         
         report_layout.addLayout(report_buttons_layout)
         
-        # Single shared label for report file name
+        # Horizontal layout for report file name and status indicator
+        report_info_layout = QHBoxLayout()
+        report_info_layout.setContentsMargins(0, 0, 0, 0)
+        report_info_layout.setSpacing(10)
+        
+        # Label for report file name
         self.lbl_report_file = QLabel("No report file selected")
         self.lbl_report_file.setStyleSheet("color: #888; font-style: italic;")
         self.lbl_report_file.setWordWrap(True)
-        report_layout.addWidget(self.lbl_report_file)
+        report_info_layout.addWidget(self.lbl_report_file)
+        
+        # Status indicator label (initially hidden)
+        self.lbl_report_status = QLabel()
+        self.lbl_report_status.setFixedSize(20, 20)
+        self.lbl_report_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_report_status.setVisible(False)
+        report_info_layout.addWidget(self.lbl_report_status)
+        
+        report_layout.addLayout(report_info_layout)
         
         scan_layout.addLayout(report_layout)
         scan_layout.addStretch()
@@ -997,6 +1011,7 @@ class MainWindow(QMainWindow):
     def _on_single_scan_started(self) -> None:
         """Handle single scan started signal."""
         self.btn_single_scan.setEnabled(False)
+        self._set_report_status('hidden')  # Hide status indicator during scanning
         logger.info("Single scan started")
 
     @Slot(str)
@@ -1403,6 +1418,7 @@ class MainWindow(QMainWindow):
             self.status_updated.emit(f"New report file created: {filename}")
             logger.info(f"New report file created: {file_path}")
         except Exception as e:
+            self._set_report_status('error')  # Show red X on error
             QMessageBox.critical(
                 self,
                 "File Error",
@@ -1462,6 +1478,36 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.error(f"Error checking serial number in report: {e}")
             return False
+
+    def _set_report_status(self, status: str) -> None:
+        """
+        Set report file status indicator.
+
+        Args:
+            status: Status type - 'hidden', 'success', or 'error'
+        """
+        if status == 'hidden':
+            self.lbl_report_status.setVisible(False)
+        elif status == 'success':
+            self.lbl_report_status.setVisible(True)
+            self.lbl_report_status.setText("✓")
+            self.lbl_report_status.setStyleSheet("""
+                QLabel {
+                    color: #51cf66;
+                    font-size: 18px;
+                    font-weight: bold;
+                }
+            """)
+        elif status == 'error':
+            self.lbl_report_status.setVisible(True)
+            self.lbl_report_status.setText("✗")
+            self.lbl_report_status.setStyleSheet("""
+                QLabel {
+                    color: #ff6b6b;
+                    font-size: 18px;
+                    font-weight: bold;
+                }
+            """)
 
     def _validate_measurements(self, measurements: Dict[int, Optional[ScanDataResult]]) -> Tuple[bool, str]:
         """Validate measurements against configured thresholds.
@@ -1684,10 +1730,12 @@ class MainWindow(QMainWindow):
                 writer = csv.writer(f, delimiter=';')
                 writer.writerows(rows)
             logger.info(f"Report file updated successfully: {self._report_file_path}")
+            self._set_report_status('success')  # Show green checkmark after successful write
             logger.info("=" * 60)
         except Exception as e:
             logger.error(f"Error writing report file: {e}")
             logger.exception("Full exception details:")
+            self._set_report_status('error')  # Show red X on error
             QMessageBox.critical(
                 self,
                 "Report File Error",
