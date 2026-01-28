@@ -80,6 +80,13 @@ class ScanWorker(QObject):
                 # Read all channels
                 measurements = self._device.read_all_channels()
 
+                # Check if device got disconnected during read
+                if not self._device.is_connected():
+                    error_msg = "Device disconnected during scan"
+                    logger.error(error_msg)
+                    self.scan_error.emit(error_msg)
+                    break
+
                 # Emit results
                 self.scan_complete.emit(measurements)
 
@@ -160,6 +167,14 @@ class SingleScanWorker(QObject):
             # Configure channels if configurations exist
             if self._channel_configs:
                 for channel_num, config in self._channel_configs.items():
+                    # Check if device got disconnected during configuration
+                    if not self._device.is_connected():
+                        error_msg = "Device disconnected during channel configuration"
+                        logger.error(error_msg)
+                        self.scan_error.emit(error_msg)
+                        QThread.currentThread().quit()
+                        return
+                    
                     # Get measurement type and range from config dict
                     measurement_type_str = config.get('measurement_type')
                     range_value = config.get('range_value', 'AUTO')
@@ -189,6 +204,14 @@ class SingleScanWorker(QObject):
             
             # Read all channels
             measurements = self._device.read_all_channels()
+            
+            # Check if device got disconnected during read
+            if not self._device.is_connected():
+                error_msg = "Device disconnected during scan"
+                logger.error(error_msg)
+                self.scan_error.emit(error_msg)
+                QThread.currentThread().quit()
+                return
             
             # Emit results
             self.scan_complete.emit(measurements)
@@ -268,7 +291,7 @@ class AsyncScanManager(QObject):
 
             # Forward worker signals to manager signals
             self._worker.scan_complete.connect(self.scan_complete)
-            self._worker.scan_error.connect(self.scan_error)
+            self._worker.scan_error.connect(self._on_scan_error)
             self._worker.channel_read.connect(self.channel_read)
             self._worker.scan_started.connect(self.scan_started)
             self._worker.scan_stopped.connect(self._on_worker_scan_stopped)
@@ -396,6 +419,13 @@ class AsyncScanManager(QObject):
 
             # Read all channels
             measurements = self._device.read_all_channels()
+
+            # Check if device got disconnected during read
+            if not self._device.is_connected():
+                error_msg = "Device disconnected during scan"
+                logger.error(error_msg)
+                self.scan_error.emit(error_msg)
+                return
 
             # Emit results
             self.scan_complete.emit(measurements)
@@ -529,6 +559,26 @@ class AsyncScanManager(QObject):
         """Handle thread finished signal."""
         logger.debug("Scan thread finished")
         self._scanning = False
+
+    def _on_scan_error(self, error_msg: str) -> None:
+        """Handle scan error signal from worker.
+        
+        Args:
+            error_msg: Error message string.
+        """
+        logger.error(f"Scan error received: {error_msg}")
+        
+        # Check if error indicates device disconnection
+        if "disconnected" in error_msg.lower() or "not connected" in error_msg.lower():
+            logger.warning("Device disconnected, stopping scanning")
+            self._scanning = False
+            # Stop the thread if it's running
+            if self._thread and self._thread.isRunning():
+                self._thread.quit()
+                self._thread.wait(1000)
+        
+        # Forward error to manager's scan_error signal
+        self.scan_error.emit(error_msg)
 
     def _cleanup(self) -> None:
         """Clean up thread and worker resources."""

@@ -829,6 +829,7 @@ class MainWindow(QMainWindow):
         self.scan_manager.scan_started.connect(self.scan_started.emit)
         self.scan_manager.channel_read.connect(self._on_channel_read)
         self.scan_manager.scan_stopped.connect(self._on_scan_stopped)
+        self.scan_manager.scan_error.connect(self._on_scan_error)
 
         # Start scanning
         self.scan_manager.start()
@@ -930,6 +931,43 @@ class MainWindow(QMainWindow):
         self.scan_progress.reset()
         self.status_updated.emit("Scanning stopped")
         logger.info("Scan stopped, UI updated")
+
+    @Slot(str)
+    def _on_scan_error(self, error_msg: str) -> None:
+        """Handle scan error signal during continuous scanning.
+        
+        Args:
+            error_msg: Error message string.
+        """
+        logger.error(f"Continuous scan error: {error_msg}")
+        self.scan_progress.reset()
+        self.btn_start_scan.setEnabled(True)
+        self.btn_stop_scan.setEnabled(False)
+        self.btn_single_scan.setEnabled(True)
+        
+        # Check if error indicates device disconnection
+        if "disconnected" in error_msg.lower() or "not connected" in error_msg.lower():
+            QMessageBox.critical(
+                self,
+                "Device Disconnected",
+                f"The device has been disconnected:\n{error_msg}\n\n"
+                "Please check the device connection and try again."
+            )
+            # Update UI to show disconnected state
+            self.status_label.setText("Disconnected")
+            self.status_label.setStyleSheet("color: #ff6b6b; font-weight: bold;")
+            self.btn_connect.setEnabled(True)
+            self.btn_disconnect.setEnabled(False)
+            self.btn_start_scan.setEnabled(False)
+            self.btn_single_scan.setEnabled(False)
+            self.connection_changed.emit(False)
+        else:
+            QMessageBox.critical(
+                self,
+                "Scan Error",
+                f"An error occurred during scanning:\n{error_msg}"
+            )
+        self.status_updated.emit(f"Scan error: {error_msg}")
 
     @Slot(object)
     def _on_single_scan_complete(self, measurements) -> None:

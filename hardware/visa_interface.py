@@ -241,6 +241,33 @@ class VisaInterface:
         """Check if device is connected."""
         with QMutexLocker(self._mutex):
             return self._connected
+    
+    def _check_device_responsive(self) -> bool:
+        """
+        Check if the device is still responsive by sending a simple query.
+        
+        Returns:
+            True if device responds, False if device is disconnected or unresponsive.
+        """
+        if not self._connected or not self.instrument:
+            return False
+        
+        try:
+            # Try to query device identification with a short timeout
+            original_timeout = self.instrument.timeout
+            self.instrument.timeout = 500  # 500ms timeout for quick check
+            self.instrument.query("*IDN?")
+            self.instrument.timeout = original_timeout  # Restore original timeout
+            return True
+        except pyvisa.Error as e:
+            logger.warning(f"Device not responsive: {e}")
+            # Mark device as disconnected if we get a VISA error
+            self._connected = False
+            return False
+        except Exception as e:
+            logger.warning(f"Unexpected error checking device responsiveness: {e}")
+            self._connected = False
+            return False
 
     def read_measurement(self) -> Optional[float]:
         """
@@ -797,33 +824,64 @@ class VisaInterface:
                 logger.warning("Attempted to read while not connected")
                 return {}
 
+            # Check if device is still responsive before attempting operations
+            if not self._check_device_responsive():
+                logger.error("Device is not responsive - marking as disconnected")
+                self._connected = False
+                return {}
+
             try:
                 # Try scan mode first
                 if not self._scan_mode_enabled:
                     logger.info("Attempting to enable scan mode...")
                     if not self.enable_scan_mode():
-                        logger.warning("Scan mode failed, falling back to channel-by-channel reading")
+                        logger.warning("Scan mode failed, falling back to sequential reading")
+                        # Check device responsiveness again before fallback
+                        if not self._check_device_responsive():
+                            logger.error("Device disconnected during scan mode enable")
+                            self._connected = False
+                            return {}
                         return self._read_channels_sequentially()
                 
                 # Configure all channels
                 if not self.configure_all_scan_channels():
                     logger.warning("Channel configuration failed, falling back to sequential reading")
+                    # Check device responsiveness before fallback
+                    if not self._check_device_responsive():
+                        logger.error("Device disconnected during channel configuration")
+                        self._connected = False
+                        return {}
                     return self._read_channels_sequentially()
                 
                 # Set scan limits (all 16 channels)
                 if not self.set_scan_limits(1, 16):
                     logger.warning("Scan limits failed, falling back to sequential reading")
+                    # Check device responsiveness before fallback
+                    if not self._check_device_responsive():
+                        logger.error("Device disconnected during scan limits setup")
+                        self._connected = False
+                        return {}
                     return self._read_channels_sequentially()
                 
                 # Start scan
                 if not self.start_scan():
                     logger.warning("Scan start failed, falling back to sequential reading")
+                    # Check device responsiveness before fallback
+                    if not self._check_device_responsive():
+                        logger.error("Device disconnected during scan start")
+                        self._connected = False
+                        return {}
                     return self._read_channels_sequentially()
                 
                 # Wait for scan to complete
                 max_wait_time = 30  # 30 seconds maximum wait time
                 start_time = time.time()
                 while time.time() - start_time < max_wait_time:
+                    # Check device responsiveness during wait
+                    if not self._check_device_responsive():
+                        logger.error("Device disconnected while waiting for scan to complete")
+                        self._connected = False
+                        return {}
                     if self.is_scan_complete():
                         break
                     time.sleep(0.1)  # Poll every 100ms
@@ -834,12 +892,30 @@ class VisaInterface:
                 logger.info("Starting to read data from all 16 channels...")
                 results = {}
                 for channel_num in range(1, 17):
+                    # Check device responsiveness before reading each channel
+                    if not self._check_device_responsive():
+                        logger.error(f"Device disconnected while reading channel {channel_num}")
+                        self._connected = False
+                        # Return partial results collected so far
+                        logger.warning(f"Returning partial results for {len(results)} channels")
+                        return results
                     logger.info(f"About to call get_scan_data for channel {channel_num}")
                     results[channel_num] = self.get_scan_data(channel_num)
                     logger.info(f"Channel {channel_num} result: {results[channel_num]}")
                 
                 logger.info(f"read_all_channels returning {len(results)} results: {results}")
                 return results
+            except pyvisa.Error as e:
+                # Handle VISA errors that indicate device disconnection
+                error_msg = str(e)
+                if "VI_ERROR_SYSTEM_ERROR" in error_msg or "VI_ERROR_RSRC_NFOUND" in error_msg or \
+                   "VI_ERROR_INV_SESSION" in error_msg or "VI_ERROR_IO" in error_msg:
+                    logger.error(f"Device disconnected (VISA error: {e})")
+                    self._connected = False
+                    return {}
+                logger.error(f"VISA error during multi-channel scan: {e}")
+                logger.info("Falling back to sequential channel reading")
+                return self._read_channels_sequentially()
             except Exception as e:
                 logger.error(f"Unexpected error during multi-channel scan: {e}")
                 logger.info("Falling back to sequential channel reading")
@@ -858,6 +934,14 @@ class VisaInterface:
         results = {}
         
         for channel_num in range(1, 17):
+            # Check device responsiveness before reading each channel
+            if not self._check_device_responsive():
+                logger.error(f"Device disconnected during sequential reading at channel {channel_num}")
+                self._connected = False
+                # Return partial results collected so far
+                logger.warning(f"Returning partial results for {len(results)} channels")
+                return results
+            
             try:
                 # Switch to channel (if device supports it)
                 # Note: SDM4055A-SC may not have channel switching commands
@@ -884,6 +968,18 @@ class VisaInterface:
                 # Small delay between channels
                 time.sleep(0.05)  # 50ms
                 
+            except pyvisa.Error as e:
+                # Handle VISA errors that indicate device disconnection
+                error_msg = str(e)
+                if "VI_ERROR_SYSTEM_ERROR" in error_msg or "VI_ERROR_RSRC_NFOUND" in error_msg or \
+                   "VI_ERROR_INV_SESSION" in error_msg or "VI_ERROR_IO" in error_msg:
+                    logger.error(f"Device disconnected during sequential reading at channel {channel_num}: {e}")
+                    self._connected = False
+                    # Return partial results collected so far
+                    logger.warning(f"Returning partial results for {len(results)} channels")
+                    return results
+                logger.error(f"Error reading channel {channel_num}: {e}")
+                results[channel_num] = None
             except Exception as e:
                 logger.error(f"Error reading channel {channel_num}: {e}")
                 results[channel_num] = None
