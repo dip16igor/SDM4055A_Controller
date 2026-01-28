@@ -1326,20 +1326,7 @@ class ChannelProgressIndicator(QWidget):
         """)
         self.spinner_label.setText("◌")  # Start with X icon
 
-        # Create text label
-        self.text_label = QLabel("Ready")
-        self.text_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.text_label.setStyleSheet("""
-            QLabel {
-                background-color: transparent;
-                color: #888888;
-                font-size: 11px;
-                padding-left: 8px;
-            }
-        """)
-
         layout.addWidget(self.spinner_label)
-        layout.addWidget(self.text_label)
         layout.addStretch()
 
     def update_theme(self, theme: str) -> None:
@@ -1360,14 +1347,6 @@ class ChannelProgressIndicator(QWidget):
                     font-weight: bold;
                 }
             """)
-            self.text_label.setStyleSheet("""
-                QLabel {
-                    background-color: transparent;
-                    color: #888888;
-                    font-size: 11px;
-                    padding-left: 8px;
-                }
-            """)
         else:
             self.spinner_label.setStyleSheet("""
                 QLabel {
@@ -1377,21 +1356,10 @@ class ChannelProgressIndicator(QWidget):
                     font-weight: bold;
                 }
             """)
-            self.text_label.setStyleSheet("""
-                QLabel {
-                    background-color: transparent;
-                    color: #666666;
-                    font-size: 11px;
-                    padding-left: 8px;
-                }
-            """)
 
     def start_scan(self) -> None:
         """Start scanning animation."""
         self._is_scanning = True
-
-        # Hide text label when scanning
-        self.text_label.setVisible(False)
 
         # Start spinning animation
         if self._animation_timer is None:
@@ -1464,9 +1432,6 @@ class ChannelProgressIndicator(QWidget):
                     font-weight: bold;
                 }
             """)
-
-        # Show text label when not scanning
-        self.text_label.setVisible(True)
 
 
 class LogViewerDialog(QDialog):
