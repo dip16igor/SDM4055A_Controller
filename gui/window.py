@@ -9,7 +9,8 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 from openpyxl import Workbook
-from openpyxl.styles import PatternFill
+from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
+from openpyxl.utils import get_column_letter
 
 from PySide6.QtCore import QObject, Signal, Slot, Qt
 from PySide6.QtGui import QAction, QMouseEvent, QIcon, QPainter, QPainterPath, QColor, QFontMetrics
@@ -1620,6 +1621,10 @@ class MainWindow(QMainWindow):
                 for col_idx, value in enumerate(row, start=1):
                     ws.cell(row=row_idx, column=col_idx, value=value)
 
+            # Apply enhanced formatting (header, borders, auto-width)
+            logger.info("Applying enhanced formatting...")
+            self._apply_enhanced_formatting(ws, rows, rows[0])
+
             # Apply conditional formatting
             logger.info("Applying conditional formatting...")
             self._apply_conditional_formatting(ws, rows)
@@ -1768,6 +1773,53 @@ class MainWindow(QMainWindow):
 
         logger.info(f"Conditional formatting applied: {red_count} red cells, {green_count} green cells, {empty_count} empty cells skipped")
         logger.info("Conditional formatting complete")
+
+    def _apply_enhanced_formatting(self, worksheet, rows: List[List[str]], header: List[str]) -> None:
+        """
+        Apply enhanced formatting to Excel worksheet (header bold, borders, auto-width).
+
+        Args:
+            worksheet: openpyxl worksheet object
+            rows: List of rows from CSV file
+            header: Header row list
+        """
+        logger.info("Applying enhanced formatting (header, borders, auto-width)...")
+
+        # Define styles
+        header_font = Font(name='Arial', size=11, bold=True)
+        thin_border = Border(
+            left=Side(style='thin', color='000000'),
+            right=Side(style='thin', color='000000'),
+            top=Side(style='thin', color='000000'),
+            bottom=Side(style='thin', color='000000')
+        )
+        header_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+        # Apply header formatting (bold font, center alignment)
+        for col_idx, value in enumerate(header, start=1):
+            cell = worksheet.cell(row=1, column=col_idx)
+            cell.font = header_font
+            cell.alignment = header_alignment
+            cell.border = thin_border
+
+        # Auto-adjust column widths based on content
+        for col_idx in range(1, len(header) + 1):
+            max_length = 0
+            for row in rows:
+                cell_value = str(row[col_idx - 1]) if col_idx - 1 < len(row) else ""
+                max_length = max(max_length, len(cell_value))
+            
+            # Set column width with some padding
+            col_letter = get_column_letter(col_idx)
+            worksheet.column_dimensions[col_letter].width = max_length + 2
+
+        # Apply borders to all data cells
+        for row_idx, row in enumerate(rows[1:], start=2):
+            for col_idx, value in enumerate(row, start=1):
+                cell = worksheet.cell(row=row_idx, column=col_idx)
+                cell.border = thin_border
+
+        logger.info("Enhanced formatting applied successfully")
 
     def _check_serial_in_report(self, serial_number: str) -> bool:
         """Check if serial number already exists in report file.
