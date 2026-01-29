@@ -174,6 +174,80 @@ The device communicates via USB using VISA protocol, which is an industry standa
   - Data file inclusion: `gui`, `hardware` directories
   - Standalone Windows executable output
 
+## Recent Changes (2026-01-29)
+
+### New Features
+1. **Excel Export with Enhanced Formatting**
+     - Added "xlsx" button (65px width) next to "New Report File" button
+     - Exports CSV report files to Excel format with professional formatting
+     - Enhanced Excel formatting includes:
+       - Bold header row (Arial 11pt bold)
+       - Thin black borders for all cells
+       - Auto-adjusted column widths based on content
+       - Centered header text with wrap support
+     - Conditional formatting based on threshold configuration:
+       - Light red background (#FFCCCC) for values outside thresholds
+       - Light green background (#CCFFCC) for values within thresholds
+       - Supports lower-only, upper-only, or both thresholds
+       - Handles custom channel names in parentheses (e.g., "CH1 (3.3VD)")
+     - Standard save file dialog with auto-generated Excel filename
+     - Filename based on CSV report filename with .xlsx extension
+     - Comprehensive error handling for missing config, file errors, invalid CSV
+     - Detailed logging for debugging export operations
+
+### Bug Fixes
+1. **gui/widgets.py** - Fixed `ChannelIndicator.set_status` AttributeError
+    - Changed `self.status_label` to `self.value_label` in set_status method
+    - Corrects AttributeError when displaying status messages like "No data" or "OVERLOAD"
+    - Fixes issue where status messages couldn't be displayed after single scan
+
+### Modified Files
+- **requirements.txt**:
+   - Added `openpyxl>=3.1.0` for Excel file creation and formatting
+
+- **gui/window.py**:
+   - Added imports for openpyxl modules:
+     - `Workbook` for Excel workbook creation
+     - `PatternFill`, `Font`, `Border`, `Side`, `Alignment` for cell formatting
+     - `get_column_letter` for column width adjustment
+   - Created `btn_export_excel` QPushButton (65px width, labeled "xlsx")
+   - Implemented `_on_export_excel()` method for Excel export functionality
+   - Implemented `_apply_enhanced_formatting()` method for professional Excel formatting:
+     - Bold header font (Arial 11pt bold)
+     - Thin black borders for all cells
+     - Auto-adjusted column widths based on content
+     - Centered header alignment with wrap text
+   - Updated `_apply_conditional_formatting()` method:
+     - Fixed regex pattern to handle custom channel names in parentheses
+     - Uses `r'CH(\d+)'` to extract channel number from column names
+     - Applies conditional formatting based on threshold configuration
+   - Updated `_on_select_report_file()` to enable xlsx button when report file selected
+   - Updated `_on_new_report_file()` to enable xlsx button when new report file created
+
+- **gui/widgets.py**:
+   - Fixed `set_status()` method in `ChannelIndicator` class:
+     - Changed `self.status_label` to `self.value_label` (line 534)
+     - Changed `self.status_label` to `self.value_label` (line 536-538)
+     - Fixes AttributeError when displaying status messages
+
+### Testing
+- **test_channel_indicator_fix.py** (NEW): Tests for ChannelIndicator.set_status fix
+  - 4 test cases covering status display scenarios
+  - All tests passed successfully
+
+- **test_excel_export_simple.py** (NEW): Tests for Excel export functionality
+  - Tests CSV reading, Excel creation, and conditional formatting
+  - Verifies red/green cell formatting based on thresholds
+  - All tests passed successfully
+
+- **test_enhanced_formatting.py** (NEW): Tests for enhanced Excel formatting
+  - Tests header bold font, borders, and auto-width adjustment
+  - Verifies column width calculation based on content
+  - All tests passed successfully
+
+### Archived Proposals
+- **add-excel-export-with-conditional-formatting** → archived in `openspec/changes/archive/2026-01-29-add-excel-export-with-conditional-formatting/`
+
 ## Recent Changes (2026-01-26)
 
 ### New Features
