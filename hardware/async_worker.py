@@ -88,8 +88,8 @@ class ScanWorker(QObject):
                     break
 
                 # Check if measurements are empty (indicates device disconnection)
-                # Empty dict is truthy in Python, so check length
-                if not measurements or len(measurements) == 0:
+                # Empty dict is truthy in Python, so check length only
+                if len(measurements) == 0:
                     error_msg = "Device disconnected - no measurements received"
                     logger.error(error_msg)
                     self.scan_error.emit(error_msg)

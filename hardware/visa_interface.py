@@ -486,11 +486,24 @@ class VisaInterface:
             time.sleep(1.0)  # 1 second delay for mode to settle (DEBUG: to identify which command causes beep)
             self._check_and_log_errors("enable scan mode (:ROUT:SCAN ON)")
             
+            # Check if device is still responsive after enabling scan mode
+            # This is critical to detect device disconnection during this operation
+            if not self._check_device_responsive():
+                logger.error("Device disconnected during scan mode enable")
+                # Device is already disconnected by _check_device_responsive()
+                return False
+            
             # Set scan function to STEP
             logger.info("Sending: :ROUT:FUNC STEP")
             self.instrument.write(":ROUT:FUNC STEP")
             time.sleep(1.0)  # 1 second delay (DEBUG: to identify which command causes beep)
             self._check_and_log_errors("set scan function to STEP (:ROUT:FUNC STEP)")
+            
+            # Check if device is still responsive after setting scan function
+            if not self._check_device_responsive():
+                logger.error("Device disconnected during scan function setup")
+                # Device is already disconnected by _check_device_responsive()
+                return False
             
             # Turn off auto-zero for faster scanning (optional)
             # COMMENTED OUT: This command causes error/beep on CS1016 scanning card
@@ -515,6 +528,13 @@ class VisaInterface:
             return True
         except pyvisa.Error as e:
             logger.error(f"VISA scan mode enable error: {e}")
+            # Check if this error indicates device disconnection
+            error_msg = str(e)
+            if "VI_ERROR_SYSTEM_ERROR" in error_msg or "VI_ERROR_RSRC_NFOUND" in error_msg or \
+               "VI_ERROR_INV_SESSION" in error_msg or "VI_ERROR_IO" in error_msg:
+                logger.error("Device disconnected (VISA error indicates disconnection)")
+                self._check_device_responsive()  # This will mark device as disconnected
+                return False
             return False
         except Exception as e:
             logger.error(f"Unexpected error during scan mode enable: {e}")
@@ -586,9 +606,20 @@ class VisaInterface:
             return True
         except pyvisa.Error as e:
             logger.error(f"VISA channel configuration error: {e}")
+            # Check if this error indicates device disconnection
+            error_msg = str(e)
+            if "VI_ERROR_SYSTEM_ERROR" in error_msg or "VI_ERROR_RSRC_NFOUND" in error_msg or \
+               "VI_ERROR_INV_SESSION" in error_msg or "VI_ERROR_IO" in error_msg:
+                logger.error("Device disconnected (VISA error indicates disconnection)")
+                self._check_device_responsive()  # This will mark device as disconnected
+                return False
+            # Also check device responsiveness directly to ensure disconnection is detected
+            self._check_device_responsive()
             return False
         except Exception as e:
             logger.error(f"Unexpected error during channel configuration: {e}")
+            # Also check device responsiveness directly to ensure disconnection is detected
+            self._check_device_responsive()
             return False
 
     def configure_all_scan_channels(self) -> bool:
@@ -601,6 +632,12 @@ class VisaInterface:
         for channel_num in range(1, 17):
             if not self.configure_scan_channel(channel_num):
                 logger.error(f"Failed to configure channel {channel_num}")
+                # Check if device is still responsive after configuration failure
+                # This is critical to detect device disconnection during configuration
+                if not self._check_device_responsive():
+                    logger.error("Device disconnected during channel configuration")
+                    # Device is already disconnected by _check_device_responsive()
+                    # Return False to indicate configuration failure
                 return False
         return True
 
@@ -843,18 +880,19 @@ class VisaInterface:
                         # Check device responsiveness again before fallback
                         if not self._check_device_responsive():
                             logger.error("Device disconnected during scan mode enable")
-                            self._connected = False
+                            # Device is already disconnected by _check_device_responsive(), return empty results
                             return {}
                         return self._read_channels_sequentially()
                 
                 # Configure all channels
                 if not self.configure_all_scan_channels():
-                    logger.warning("Channel configuration failed, falling back to sequential reading")
-                    # Check device responsiveness before fallback
+                    logger.warning("Channel configuration failed, checking if device is disconnected...")
+                    # Check device responsiveness before fallback - this will detect if device was unplugged
                     if not self._check_device_responsive():
                         logger.error("Device disconnected during channel configuration")
-                        self._connected = False
+                        # Device is already disconnected by _check_device_responsive(), return empty results
                         return {}
+                    # Device is still responsive, configuration failed for another reason, try fallback
                     return self._read_channels_sequentially()
                 
                 # Set scan limits (all 16 channels)
@@ -863,7 +901,7 @@ class VisaInterface:
                     # Check device responsiveness before fallback
                     if not self._check_device_responsive():
                         logger.error("Device disconnected during scan limits setup")
-                        self._connected = False
+                        # Device is already disconnected by _check_device_responsive(), return empty results
                         return {}
                     return self._read_channels_sequentially()
                 
@@ -873,7 +911,7 @@ class VisaInterface:
                     # Check device responsiveness before fallback
                     if not self._check_device_responsive():
                         logger.error("Device disconnected during scan start")
-                        self._connected = False
+                        # Device is already disconnected by _check_device_responsive(), return empty results
                         return {}
                     return self._read_channels_sequentially()
                 
@@ -884,7 +922,8 @@ class VisaInterface:
                     # Check device responsiveness during wait
                     if not self._check_device_responsive():
                         logger.error("Device disconnected while waiting for scan to complete")
-                        self._connected = False
+                        # Device is already disconnected by _check_device_responsive()
+                        # Return empty dict to indicate device disconnection
                         return {}
                     if self.is_scan_complete():
                         break
@@ -899,10 +938,10 @@ class VisaInterface:
                     # Check device responsiveness before reading each channel
                     if not self._check_device_responsive():
                         logger.error(f"Device disconnected while reading channel {channel_num}")
-                        self._connected = False
-                        # Return partial results collected so far
-                        logger.warning(f"Returning partial results for {len(results)} channels")
-                        return results
+                        # Device is already disconnected by _check_device_responsive()
+                        # Return empty dict to indicate device disconnection (not partial results)
+                        logger.warning("Device disconnected, returning empty results")
+                        return {}
                     logger.info(f"About to call get_scan_data for channel {channel_num}")
                     results[channel_num] = self.get_scan_data(channel_num)
                     logger.info(f"Channel {channel_num} result: {results[channel_num]}")
@@ -941,10 +980,10 @@ class VisaInterface:
             # Check device responsiveness before reading each channel
             if not self._check_device_responsive():
                 logger.error(f"Device disconnected during sequential reading at channel {channel_num}")
-                self._connected = False
-                # Return partial results collected so far
-                logger.warning(f"Returning partial results for {len(results)} channels")
-                return results
+                # Device is already disconnected by _check_device_responsive()
+                # Return empty dict to indicate device disconnection (not partial results)
+                logger.warning("Device disconnected, returning empty results")
+                return {}
             
             try:
                 # Switch to channel (if device supports it)
@@ -979,9 +1018,9 @@ class VisaInterface:
                    "VI_ERROR_INV_SESSION" in error_msg or "VI_ERROR_IO" in error_msg:
                     logger.error(f"Device disconnected during sequential reading at channel {channel_num}: {e}")
                     self._connected = False
-                    # Return partial results collected so far
-                    logger.warning(f"Returning partial results for {len(results)} channels")
-                    return results
+                    # Return empty dict to indicate device disconnection (not partial results)
+                    logger.warning("Device disconnected, returning empty results")
+                    return {}
                 logger.error(f"Error reading channel {channel_num}: {e}")
                 results[channel_num] = None
             except Exception as e:
