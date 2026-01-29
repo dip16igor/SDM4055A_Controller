@@ -5,6 +5,7 @@ Async worker thread for device operations to keep UI responsive.
 from PySide6.QtCore import QThread, Signal, QObject, QMutex, QMutexLocker
 from typing import Dict, Optional
 import logging
+import pyvisa
 
 from .visa_interface import MeasurementType, ScanDataResult
 
@@ -105,6 +106,54 @@ class ScanWorker(QObject):
 
                 logger.debug(
                     f"Scan completed: {len(measurements)} channels read")
+
+            except pyvisa.Error as e:
+                # Handle VISA connection failures specifically
+                error_msg = str(e)
+                logger.error(f"VISA error during scanning: {error_msg}")
+                
+                # Check if this is a VISA connection failure error
+                is_connection_error = (
+                    "VI_ERROR_SYSTEM_ERROR" in error_msg or
+                    "VI_ERROR_RSRC_NFOUND" in error_msg or
+                    "VI_ERROR_INV_SESSION" in error_msg or
+                    "VI_ERROR_IO" in error_msg or
+                    "-1073807360" in error_msg  # VI_ERROR_SYSTEM_ERROR code
+                )
+                
+                if is_connection_error:
+                    # This is a VISA connection failure - disconnect device properly
+                    logger.error("VISA connection failure detected - disconnecting device")
+                    user_error_msg = (
+                        "VISA Connection Failure: Device has become unresponsive or disconnected.\n"
+                        "Error: VI_ERROR_SYSTEM_ERROR (-1073807360)\n\n"
+                        "The scanning process has been terminated to prevent data corruption.\n"
+                        "VISA resources have been released."
+                    )
+                    self.scan_error.emit(user_error_msg)
+                    
+                    # Call disconnect to properly release VISA resources and reset hardware
+                    try:
+                        self._device.disconnect()
+                        logger.info("Device disconnected successfully after VISA error")
+                    except Exception as disconnect_error:
+                        logger.error(f"Error during device disconnect: {disconnect_error}")
+                    
+                    # Break the loop to terminate scanning
+                    break
+                else:
+                    # Other VISA errors - still disconnect but with different message
+                    user_error_msg = f"VISA Error: {error_msg}"
+                    self.scan_error.emit(user_error_msg)
+                    
+                    # Still disconnect to be safe
+                    try:
+                        self._device.disconnect()
+                        logger.info("Device disconnected after VISA error")
+                    except Exception as disconnect_error:
+                        logger.error(f"Error during device disconnect: {disconnect_error}")
+                    
+                    break
 
             except Exception as e:
                 error_msg = f"Scan error: {str(e)}"
@@ -239,6 +288,49 @@ class SingleScanWorker(QObject):
             
             logger.info(f"Single scan completed: {len(measurements)} channels read")
             
+        except pyvisa.Error as e:
+            # Handle VISA connection failures specifically
+            error_msg = str(e)
+            logger.error(f"VISA error during single scan: {error_msg}")
+            
+            # Check if this is a VISA connection failure error
+            is_connection_error = (
+                "VI_ERROR_SYSTEM_ERROR" in error_msg or
+                "VI_ERROR_RSRC_NFOUND" in error_msg or
+                "VI_ERROR_INV_SESSION" in error_msg or
+                "VI_ERROR_IO" in error_msg or
+                "-1073807360" in error_msg  # VI_ERROR_SYSTEM_ERROR code
+            )
+            
+            if is_connection_error:
+                # This is a VISA connection failure - disconnect device properly
+                logger.error("VISA connection failure detected - disconnecting device")
+                user_error_msg = (
+                    "VISA Connection Failure: Device has become unresponsive or disconnected.\n"
+                    "Error: VI_ERROR_SYSTEM_ERROR (-1073807360)\n\n"
+                    "The scanning process has been terminated to prevent data corruption.\n"
+                    "VISA resources have been released."
+                )
+                self.scan_error.emit(user_error_msg)
+                
+                # Call disconnect to properly release VISA resources and reset hardware
+                try:
+                    self._device.disconnect()
+                    logger.info("Device disconnected successfully after VISA error")
+                except Exception as disconnect_error:
+                    logger.error(f"Error during device disconnect: {disconnect_error}")
+            else:
+                # Other VISA errors - still disconnect but with different message
+                user_error_msg = f"VISA Error: {error_msg}"
+                self.scan_error.emit(user_error_msg)
+                
+                # Still disconnect to be safe
+                try:
+                    self._device.disconnect()
+                    logger.info("Device disconnected after VISA error")
+                except Exception as disconnect_error:
+                    logger.error(f"Error during device disconnect: {disconnect_error}")
+        
         except Exception as e:
             error_msg = f"Single scan error: {str(e)}"
             logger.error(error_msg)
@@ -460,6 +552,49 @@ class AsyncScanManager(QObject):
 
             logger.info(
                 f"Single scan completed: {len(measurements)} channels read")
+
+        except pyvisa.Error as e:
+            # Handle VISA connection failures specifically
+            error_msg = str(e)
+            logger.error(f"VISA error during single scan: {error_msg}")
+            
+            # Check if this is a VISA connection failure error
+            is_connection_error = (
+                "VI_ERROR_SYSTEM_ERROR" in error_msg or
+                "VI_ERROR_RSRC_NFOUND" in error_msg or
+                "VI_ERROR_INV_SESSION" in error_msg or
+                "VI_ERROR_IO" in error_msg or
+                "-1073807360" in error_msg  # VI_ERROR_SYSTEM_ERROR code
+            )
+            
+            if is_connection_error:
+                # This is a VISA connection failure - disconnect device properly
+                logger.error("VISA connection failure detected - disconnecting device")
+                user_error_msg = (
+                    "VISA Connection Failure: Device has become unresponsive or disconnected.\n"
+                    "Error: VI_ERROR_SYSTEM_ERROR (-1073807360)\n\n"
+                    "The scanning process has been terminated to prevent data corruption.\n"
+                    "VISA resources have been released."
+                )
+                self.scan_error.emit(user_error_msg)
+                
+                # Call disconnect to properly release VISA resources and reset hardware
+                try:
+                    self._device.disconnect()
+                    logger.info("Device disconnected successfully after VISA error")
+                except Exception as disconnect_error:
+                    logger.error(f"Error during device disconnect: {disconnect_error}")
+            else:
+                # Other VISA errors - still disconnect but with different message
+                user_error_msg = f"VISA Error: {error_msg}"
+                self.scan_error.emit(user_error_msg)
+                
+                # Still disconnect to be safe
+                try:
+                    self._device.disconnect()
+                    logger.info("Device disconnected after VISA error")
+                except Exception as disconnect_error:
+                    logger.error(f"Error during device disconnect: {disconnect_error}")
 
         except Exception as e:
             error_msg = f"Single scan error: {str(e)}"

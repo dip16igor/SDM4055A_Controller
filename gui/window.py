@@ -945,12 +945,21 @@ class MainWindow(QMainWindow):
         self.btn_stop_scan.setEnabled(False)
         self.btn_single_scan.setEnabled(True)
         
-        # Check if error indicates device disconnection
-        if "disconnected" in error_msg.lower() or "not connected" in error_msg.lower():
+        # Check if error indicates device disconnection or VISA connection failure
+        is_disconnection_error = (
+            "disconnected" in error_msg.lower() or
+            "not connected" in error_msg.lower() or
+            "VISA Connection Failure" in error_msg or
+            "VI_ERROR_SYSTEM_ERROR" in error_msg or
+            "unresponsive" in error_msg.lower()
+        )
+        
+        if is_disconnection_error:
             QMessageBox.critical(
                 self,
                 "Device Disconnected",
-                f"The device has been disconnected:\n{error_msg}\n\n"
+                f"The device has been disconnected or has become unresponsive:\n\n{error_msg}\n\n"
+                "VISA resources have been released.\n"
                 "Please check the device connection and try again."
             )
             # Update UI to show disconnected state
@@ -1062,11 +1071,38 @@ class MainWindow(QMainWindow):
         logger.error(f"Single scan error: {error_msg}")
         self.scan_progress.reset()
         self.btn_single_scan.setEnabled(True)
-        QMessageBox.critical(
-            self,
-            "Scan Error",
-            f"Failed to perform scan:\n{error_msg}"
+        
+        # Check if error indicates device disconnection or VISA connection failure
+        is_disconnection_error = (
+            "disconnected" in error_msg.lower() or
+            "not connected" in error_msg.lower() or
+            "VISA Connection Failure" in error_msg or
+            "VI_ERROR_SYSTEM_ERROR" in error_msg or
+            "unresponsive" in error_msg.lower()
         )
+        
+        if is_disconnection_error:
+            QMessageBox.critical(
+                self,
+                "Device Disconnected",
+                f"The device has been disconnected or has become unresponsive:\n\n{error_msg}\n\n"
+                "VISA resources have been released.\n"
+                "Please check the device connection and try again."
+            )
+            # Update UI to show disconnected state
+            self.status_label.setText("Disconnected")
+            self.status_label.setStyleSheet("color: #ff6b6b; font-weight: bold;")
+            self.btn_connect.setEnabled(True)
+            self.btn_disconnect.setEnabled(False)
+            self.btn_start_scan.setEnabled(False)
+            self.btn_single_scan.setEnabled(False)
+            self.connection_changed.emit(False)
+        else:
+            QMessageBox.critical(
+                self,
+                "Scan Error",
+                f"Failed to perform scan:\n{error_msg}"
+            )
 
     @Slot(int, object)
     def _on_channel_read(self, channel_num: int, result: object) -> None:
