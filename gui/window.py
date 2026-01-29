@@ -1689,78 +1689,82 @@ class MainWindow(QMainWindow):
         for row_idx, row in enumerate(rows[1:], start=2):
             for col_name, col_idx in col_mapping.items():
                 # Check if this is a channel column (CH1 through CH12)
-                if col_name.startswith('CH') and col_name[2:].isdigit():
-                    channel_str = col_name[2:]  # Extract channel number
-                    try:
-                        channel_num = int(channel_str)
-                        if 1 <= channel_num <= 12:
-                            # Get cell value
-                            cell_value = row[col_idx - 1] if col_idx - 1 < len(row) else ""
+                if col_name.startswith('CH'):
+                    # Extract channel number using regex to handle custom names in parentheses
+                    import re
+                    match = re.match(r'CH(\d+)', col_name)
+                    if match:
+                        channel_str = match.group(1)  # Extract just the number
+                        try:
+                            channel_num = int(channel_str)
+                            if 1 <= channel_num <= 12:
+                                # Get cell value
+                                cell_value = row[col_idx - 1] if col_idx - 1 < len(row) else ""
 
-                            # Skip empty cells
-                            if not cell_value or cell_value.strip() == "":
-                                empty_count += 1
-                                continue
+                                # Skip empty cells
+                                if not cell_value or cell_value.strip() == "":
+                                    empty_count += 1
+                                    continue
 
-                            # Parse value as float
-                            try:
-                                value = float(cell_value)
-                            except ValueError:
-                                logger.debug(f"Could not parse '{cell_value}' as float, skipping formatting")
-                                continue
+                                # Parse value as float
+                                try:
+                                    value = float(cell_value)
+                                except ValueError:
+                                    logger.debug(f"Could not parse '{cell_value}' as float, skipping formatting")
+                                    continue
 
-                            # Get threshold configuration for this channel
-                            config = configs.get(channel_num)
-                            if config is None:
-                                logger.debug(f"No config for channel {channel_num}, skipping formatting")
-                                continue
+                                # Get threshold configuration for this channel
+                                config = configs.get(channel_num)
+                                if config is None:
+                                    logger.debug(f"No config for channel {channel_num}, skipping formatting")
+                                    continue
 
-                            # Check thresholds
-                            lower_threshold = config.lower_threshold
-                            upper_threshold = config.upper_threshold
+                                # Check thresholds
+                                lower_threshold = config.lower_threshold
+                                upper_threshold = config.upper_threshold
 
-                            # Skip if no thresholds configured
-                            if lower_threshold is None and upper_threshold is None:
-                                logger.debug(f"No thresholds configured for channel {channel_num}, skipping formatting")
-                                continue
+                                # Skip if no thresholds configured
+                                if lower_threshold is None and upper_threshold is None:
+                                    logger.debug(f"No thresholds configured for channel {channel_num}, skipping formatting")
+                                    continue
 
-                            # Apply formatting based on thresholds
-                            cell = worksheet.cell(row=row_idx, column=col_idx)
+                                # Apply formatting based on thresholds
+                                cell = worksheet.cell(row=row_idx, column=col_idx)
 
-                            if lower_threshold is not None and upper_threshold is not None:
-                                # Both thresholds configured
-                                if value < lower_threshold or value > upper_threshold:
-                                    cell.fill = light_red_fill
-                                    red_count += 1
-                                    logger.debug(f"Row {row_idx}, Col {col_name}: {value} (outside {lower_threshold}-{upper_threshold}) -> RED")
-                                else:
-                                    cell.fill = light_green_fill
-                                    green_count += 1
-                                    logger.debug(f"Row {row_idx}, Col {col_name}: {value} (within {lower_threshold}-{upper_threshold}) -> GREEN")
-                            elif lower_threshold is not None:
-                                # Only lower threshold configured
-                                if value < lower_threshold:
-                                    cell.fill = light_red_fill
-                                    red_count += 1
-                                    logger.debug(f"Row {row_idx}, Col {col_name}: {value} (below {lower_threshold}) -> RED")
-                                else:
-                                    cell.fill = light_green_fill
-                                    green_count += 1
-                                    logger.debug(f"Row {row_idx}, Col {col_name}: {value} (above {lower_threshold}) -> GREEN")
-                            elif upper_threshold is not None:
-                                # Only upper threshold configured
-                                if value > upper_threshold:
-                                    cell.fill = light_red_fill
-                                    red_count += 1
-                                    logger.debug(f"Row {row_idx}, Col {col_name}: {value} (above {upper_threshold}) -> RED")
-                                else:
-                                    cell.fill = light_green_fill
-                                    green_count += 1
-                                    logger.debug(f"Row {row_idx}, Col {col_name}: {value} (below {upper_threshold}) -> GREEN")
+                                if lower_threshold is not None and upper_threshold is not None:
+                                    # Both thresholds configured
+                                    if value < lower_threshold or value > upper_threshold:
+                                        cell.fill = light_red_fill
+                                        red_count += 1
+                                        logger.debug(f"Row {row_idx}, Col {col_name}: {value} (outside {lower_threshold}-{upper_threshold}) -> RED")
+                                    else:
+                                        cell.fill = light_green_fill
+                                        green_count += 1
+                                        logger.debug(f"Row {row_idx}, Col {col_name}: {value} (within {lower_threshold}-{upper_threshold}) -> GREEN")
+                                elif lower_threshold is not None:
+                                    # Only lower threshold configured
+                                    if value < lower_threshold:
+                                        cell.fill = light_red_fill
+                                        red_count += 1
+                                        logger.debug(f"Row {row_idx}, Col {col_name}: {value} (below {lower_threshold}) -> RED")
+                                    else:
+                                        cell.fill = light_green_fill
+                                        green_count += 1
+                                        logger.debug(f"Row {row_idx}, Col {col_name}: {value} (above {lower_threshold}) -> GREEN")
+                                elif upper_threshold is not None:
+                                    # Only upper threshold configured
+                                    if value > upper_threshold:
+                                        cell.fill = light_red_fill
+                                        red_count += 1
+                                        logger.debug(f"Row {row_idx}, Col {col_name}: {value} (above {upper_threshold}) -> RED")
+                                    else:
+                                        cell.fill = light_green_fill
+                                        green_count += 1
+                                        logger.debug(f"Row {row_idx}, Col {col_name}: {value} (below {upper_threshold}) -> GREEN")
 
-                    except ValueError:
-                        logger.debug(f"Could not parse channel number from '{col_name}', skipping")
-                        continue
+                        except ValueError:
+                            logger.debug(f"Could not parse channel number from '{col_name}', skipping")
+                            continue
 
         logger.info(f"Conditional formatting applied: {red_count} red cells, {green_count} green cells, {empty_count} empty cells skipped")
         logger.info("Conditional formatting complete")

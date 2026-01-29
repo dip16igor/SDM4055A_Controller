@@ -137,7 +137,7 @@ class DigitalIndicator(QWidget):
             status: Status text to display.
             error: If True, display status in red color.
         """
-        self.status_label.setText(status)
+        self.value_label.setText(status)
         if error:
             self.status_label.setStyleSheet("color: #ff6b6b;")
         else:
@@ -531,11 +531,11 @@ class ChannelIndicator(QWidget):
             status: Status text to display.
             error: If True, display status in red color.
         """
-        self.status_label.setText(status)
+        self.value_label.setText(status)
         if error:
-            self.status_label.setStyleSheet("color: #ff6b6b;")
+            self.value_label.setStyleSheet("color: #ff6b6b;")
         else:
-            self.status_label.setStyleSheet("color: #51cf66;")
+            self.value_label.setStyleSheet("color: #51cf66;")
 
     def reset_status(self) -> None:
         """Reset the value label to normal display."""
