@@ -276,7 +276,7 @@ class MainWindow(QMainWindow):
         self.btn_new_report_file = QPushButton("New Report File")
         self.btn_new_report_file.clicked.connect(self._on_new_report_file)
         self.btn_export_excel = QPushButton("xlsx")
-        self.btn_export_excel.setFixedWidth(50)
+        self.btn_export_excel.setFixedWidth(65)
         self.btn_export_excel.clicked.connect(self._on_export_excel)
         self.btn_export_excel.setEnabled(False)
         
