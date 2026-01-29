@@ -8,6 +8,9 @@ import re
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
+from openpyxl import Workbook
+from openpyxl.styles import PatternFill
+
 from PySide6.QtCore import QObject, Signal, Slot, Qt
 from PySide6.QtGui import QAction, QMouseEvent, QIcon, QPainter, QPainterPath, QColor, QFontMetrics
 from PySide6.QtWidgets import (
@@ -272,9 +275,14 @@ class MainWindow(QMainWindow):
         self.btn_select_report_file.clicked.connect(self._on_select_report_file)
         self.btn_new_report_file = QPushButton("New Report File")
         self.btn_new_report_file.clicked.connect(self._on_new_report_file)
+        self.btn_export_excel = QPushButton("xlsx")
+        self.btn_export_excel.setFixedWidth(50)
+        self.btn_export_excel.clicked.connect(self._on_export_excel)
+        self.btn_export_excel.setEnabled(False)
         
         report_buttons_layout.addWidget(self.btn_select_report_file)
         report_buttons_layout.addWidget(self.btn_new_report_file)
+        report_buttons_layout.addWidget(self.btn_export_excel)
         
         report_layout.addLayout(report_buttons_layout)
         
@@ -1456,6 +1464,9 @@ class MainWindow(QMainWindow):
         self.lbl_report_file.setText(filename)
         self.lbl_report_file.setStyleSheet("color: #51cf66; font-weight: bold;")
         
+        # Enable Excel export button
+        self.btn_export_excel.setEnabled(True)
+        
         self.status_updated.emit(f"Report file selected: {filename}")
         logger.info(f"Report file selected: {file_path}")
 
@@ -1489,6 +1500,9 @@ class MainWindow(QMainWindow):
             self.lbl_report_file.setText(filename)
             self.lbl_report_file.setStyleSheet("color: #51cf66; font-weight: bold;")
             
+            # Enable Excel export button
+            self.btn_export_excel.setEnabled(True)
+            
             self.status_updated.emit(f"New report file created: {filename}")
             logger.info(f"New report file created: {file_path}")
         except Exception as e:
@@ -1520,6 +1534,236 @@ class MainWindow(QMainWindow):
         else:
             # No config file loaded, use default name
             return f"report_{current_date}.csv"
+
+    def _on_export_excel(self) -> None:
+        """Handle Excel export button click."""
+        logger.info("=" * 60)
+        logger.info("STARTING EXCEL EXPORT")
+        logger.info("=" * 60)
+
+        # Check if report file path is set
+        if not self._report_file_path:
+            logger.warning("No report file selected for Excel export")
+            QMessageBox.warning(
+                self,
+                "No Report File",
+                "Please select a report file first before exporting to Excel."
+            )
+            logger.info("=" * 60)
+            return
+
+        logger.info(f"Report file path: {self._report_file_path}")
+
+        # Check if report file exists
+        if not os.path.exists(self._report_file_path):
+            logger.error(f"Report file does not exist: {self._report_file_path}")
+            QMessageBox.critical(
+                self,
+                "File Not Found",
+                f"Report file not found:\n{self._report_file_path}"
+            )
+            logger.info("=" * 60)
+            return
+
+        # Generate default filename for Excel file
+        csv_filename = os.path.basename(self._report_file_path)
+        if csv_filename.endswith('.csv'):
+            excel_filename = csv_filename[:-4] + '.xlsx'
+        else:
+            excel_filename = csv_filename + '.xlsx'
+
+        logger.info(f"Default Excel filename: {excel_filename}")
+
+        # Open file save dialog
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export to Excel",
+            excel_filename,
+            "Excel Files (*.xlsx);;All Files (*)"
+        )
+
+        if not file_path:
+            logger.info("User cancelled Excel export")
+            logger.info("=" * 60)
+            return
+
+        logger.info(f"Selected save path: {file_path}")
+
+        try:
+            # Read CSV report file
+            logger.info("Reading CSV report file...")
+            with open(self._report_file_path, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.reader(f, delimiter=';')
+                rows = list(reader)
+
+            logger.info(f"Read {len(rows)} rows from CSV file")
+
+            if not rows:
+                logger.warning("CSV file is empty")
+                QMessageBox.warning(
+                    self,
+                    "Empty File",
+                    "The report file is empty. Nothing to export."
+                )
+                logger.info("=" * 60)
+                return
+
+            # Create Excel workbook
+            logger.info("Creating Excel workbook...")
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Report"
+
+            # Write data to Excel
+            logger.info("Writing data to Excel worksheet...")
+            for row_idx, row in enumerate(rows, start=1):
+                for col_idx, value in enumerate(row, start=1):
+                    ws.cell(row=row_idx, column=col_idx, value=value)
+
+            # Apply conditional formatting
+            logger.info("Applying conditional formatting...")
+            self._apply_conditional_formatting(ws, rows)
+
+            # Save Excel file
+            logger.info(f"Saving Excel file to: {file_path}")
+            wb.save(file_path)
+            logger.info("Excel file saved successfully")
+
+            self.status_updated.emit(f"Exported to Excel: {os.path.basename(file_path)}")
+            logger.info("=" * 60)
+
+        except Exception as e:
+            logger.error(f"Error exporting to Excel: {e}")
+            logger.exception("Full exception details:")
+            QMessageBox.critical(
+                self,
+                "Export Error",
+                f"Failed to export to Excel:\n{str(e)}"
+            )
+            logger.info("=" * 60)
+
+    def _apply_conditional_formatting(self, worksheet, rows: List[List[str]]) -> None:
+        """Apply conditional formatting to measured value cells based on thresholds.
+
+        Args:
+            worksheet: openpyxl worksheet object
+            rows: List of rows from CSV file
+        """
+        logger.info("Applying conditional formatting to Excel cells...")
+
+        # Check if config is loaded
+        configs = self.config_loader.get_all_configs()
+        if not configs:
+            logger.warning("No config loaded, skipping conditional formatting")
+            QMessageBox.warning(
+                None,
+                "No Configuration",
+                "No channel configuration file is loaded.\n"
+                "Excel file will be exported without conditional formatting."
+            )
+            return
+
+        # Get header row to identify channel columns
+        if not rows:
+            logger.warning("No data rows, skipping conditional formatting")
+            return
+
+        header = rows[0]
+        logger.info(f"Header row: {header}")
+
+        # Create mapping of column names to column indices (1-based)
+        col_mapping = {}
+        for col_idx, col_name in enumerate(header, start=1):
+            col_mapping[col_name] = col_idx
+
+        # Define colors
+        light_red_fill = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")
+        light_green_fill = PatternFill(start_color="CCFFCC", end_color="CCFFCC", fill_type="solid")
+
+        # Count formatted cells
+        red_count = 0
+        green_count = 0
+        empty_count = 0
+
+        # Process each data row (skip header)
+        for row_idx, row in enumerate(rows[1:], start=2):
+            for col_name, col_idx in col_mapping.items():
+                # Check if this is a channel column (CH1 through CH12)
+                if col_name.startswith('CH') and col_name[2:].isdigit():
+                    channel_str = col_name[2:]  # Extract channel number
+                    try:
+                        channel_num = int(channel_str)
+                        if 1 <= channel_num <= 12:
+                            # Get cell value
+                            cell_value = row[col_idx - 1] if col_idx - 1 < len(row) else ""
+
+                            # Skip empty cells
+                            if not cell_value or cell_value.strip() == "":
+                                empty_count += 1
+                                continue
+
+                            # Parse value as float
+                            try:
+                                value = float(cell_value)
+                            except ValueError:
+                                logger.debug(f"Could not parse '{cell_value}' as float, skipping formatting")
+                                continue
+
+                            # Get threshold configuration for this channel
+                            config = configs.get(channel_num)
+                            if config is None:
+                                logger.debug(f"No config for channel {channel_num}, skipping formatting")
+                                continue
+
+                            # Check thresholds
+                            lower_threshold = config.lower_threshold
+                            upper_threshold = config.upper_threshold
+
+                            # Skip if no thresholds configured
+                            if lower_threshold is None and upper_threshold is None:
+                                logger.debug(f"No thresholds configured for channel {channel_num}, skipping formatting")
+                                continue
+
+                            # Apply formatting based on thresholds
+                            cell = worksheet.cell(row=row_idx, column=col_idx)
+
+                            if lower_threshold is not None and upper_threshold is not None:
+                                # Both thresholds configured
+                                if value < lower_threshold or value > upper_threshold:
+                                    cell.fill = light_red_fill
+                                    red_count += 1
+                                    logger.debug(f"Row {row_idx}, Col {col_name}: {value} (outside {lower_threshold}-{upper_threshold}) -> RED")
+                                else:
+                                    cell.fill = light_green_fill
+                                    green_count += 1
+                                    logger.debug(f"Row {row_idx}, Col {col_name}: {value} (within {lower_threshold}-{upper_threshold}) -> GREEN")
+                            elif lower_threshold is not None:
+                                # Only lower threshold configured
+                                if value < lower_threshold:
+                                    cell.fill = light_red_fill
+                                    red_count += 1
+                                    logger.debug(f"Row {row_idx}, Col {col_name}: {value} (below {lower_threshold}) -> RED")
+                                else:
+                                    cell.fill = light_green_fill
+                                    green_count += 1
+                                    logger.debug(f"Row {row_idx}, Col {col_name}: {value} (above {lower_threshold}) -> GREEN")
+                            elif upper_threshold is not None:
+                                # Only upper threshold configured
+                                if value > upper_threshold:
+                                    cell.fill = light_red_fill
+                                    red_count += 1
+                                    logger.debug(f"Row {row_idx}, Col {col_name}: {value} (above {upper_threshold}) -> RED")
+                                else:
+                                    cell.fill = light_green_fill
+                                    green_count += 1
+                                    logger.debug(f"Row {row_idx}, Col {col_name}: {value} (below {upper_threshold}) -> GREEN")
+
+                    except ValueError:
+                        logger.debug(f"Could not parse channel number from '{col_name}', skipping")
+                        continue
+
+        logger.info(f"Conditional formatting applied: {red_count} red cells, {green_count} green cells, {empty_count} empty cells skipped")
+        logger.info("Conditional formatting complete")
 
     def _check_serial_in_report(self, serial_number: str) -> bool:
         """Check if serial number already exists in report file.
