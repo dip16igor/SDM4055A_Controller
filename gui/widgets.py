@@ -60,12 +60,13 @@ class ComboBoxWithTriangle(QComboBox):
         option = QStyleOptionComboBox()
         self.initStyleOption(option)
         
-        # FIX: Draw the complete combo box (including borders) instead of just the label
+        # FIX: Draw the complete combo box (including borders and default arrow)
         # This ensures borders defined in stylesheets are properly rendered
         self.style().drawComplexControl(QStyle.ComplexControl.CC_ComboBox, option, painter, self)
         logger.debug("ComboBoxWithTriangle: Drew complete combo box with borders (CC_ComboBox)")
 
-        # Draw custom arrow
+        # Now draw our custom arrow OVER the default arrow to replace it
+        # Get arrow rectangle
         arrow_rect = self.style().subControlRect(
             QStyle.ComplexControl.CC_ComboBox,
             option,
@@ -73,6 +74,11 @@ class ComboBoxWithTriangle(QComboBox):
             self
         )
 
+        # Fill the arrow area with background color to hide the default arrow
+        # Get the background color from the option
+        bg_color = option.palette.color(QPalette.ColorRole.Button)
+        painter.fillRect(arrow_rect, bg_color)
+        
         # Draw triangle character
         painter.save()
         arrow_font = QFont()
