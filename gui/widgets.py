@@ -582,9 +582,9 @@ class ChannelIndicator(QWidget):
         # Build threshold display text
         parts = []
         if self._lower_threshold is not None:
-            parts.append(f">={self._lower_threshold:.6f}")
+            parts.append(f">={self._lower_threshold:.3f}")
         if self._upper_threshold is not None:
-            parts.append(f"<={self._upper_threshold:.6f}")
+            parts.append(f"<={self._upper_threshold:.3f}")
         
         if parts:
             self.thresholds_label.setText(" | ".join(parts))
