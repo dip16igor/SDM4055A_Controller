@@ -1985,7 +1985,7 @@ class MainWindow(QMainWindow):
             return False, result_string
         else:
             logger.info("Validation OK: All measurements within thresholds")
-            return True, ""
+            return True, "OK"
 
     def _write_report_row(self, serial_number: str, measurements: Dict[int, Optional[ScanDataResult]]) -> None:
         """Write or update a row in the report file.
