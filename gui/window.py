@@ -1668,6 +1668,10 @@ class MainWindow(QMainWindow):
             )
             return
 
+        # Get configured channels list
+        configured_channels = self.config_loader.get_configured_channels()
+        logger.info(f"Applying formatting to configured channels: {configured_channels}")
+
         # Get header row to identify channel columns
         if not rows:
             logger.warning("No data rows, skipping conditional formatting")
@@ -1693,7 +1697,7 @@ class MainWindow(QMainWindow):
         # Process each data row (skip header)
         for row_idx, row in enumerate(rows[1:], start=2):
             for col_name, col_idx in col_mapping.items():
-                # Check if this is a channel column (CH1 through CH16)
+                # Check if this is a channel column
                 if col_name.startswith('CH'):
                     # Extract channel number using regex to handle custom names in parentheses
                     import re
@@ -1702,7 +1706,8 @@ class MainWindow(QMainWindow):
                         channel_str = match.group(1)  # Extract just the number
                         try:
                             channel_num = int(channel_str)
-                            if 1 <= channel_num <= 16:
+                            # Only format configured channels
+                            if channel_num in configured_channels:
                                 # Get cell value
                                 cell_value = row[col_idx - 1] if col_idx - 1 < len(row) else ""
 
@@ -1898,11 +1903,15 @@ class MainWindow(QMainWindow):
 
         configs = self.config_loader.get_all_configs()
         failed_channels = []
+        
+        # Only validate configured channels
+        configured_channels = self.config_loader.get_configured_channels()
+        logger.info(f"Validating only configured channels: {configured_channels}")
 
         for channel_num, result in measurements.items():
-            # Check all 16 channels
-            if channel_num < 1 or channel_num > 16:
-                logger.debug(f"Skipping channel {channel_num} (not in range 1-16)")
+            # Only validate channels that are configured
+            if channel_num not in configured_channels:
+                logger.debug(f"Skipping channel {channel_num} (not configured)")
                 continue
 
             if result is None:
@@ -1999,6 +2008,15 @@ class MainWindow(QMainWindow):
         logger.info(f"Serial number: {serial_number}")
         logger.info(f"Number of measurements: {len(measurements)}")
 
+        # Get configured channels list
+        configured_channels = self.config_loader.get_configured_channels()
+        if not configured_channels:
+            logger.warning("No channels configured in config file, skipping report write")
+            logger.info("=" * 60)
+            return
+        
+        logger.info(f"Configured channels: {configured_channels}")
+
         # Validate measurements and get result string
         logger.info("Validating measurements against thresholds...")
         is_valid, result_string = self._validate_measurements(measurements)
@@ -2009,11 +2027,11 @@ class MainWindow(QMainWindow):
         row_data = [serial_number, result_string]
         logger.info(f"Building row data. Initial columns: {row_data}")
 
-        # Add measurements for all 16 channels
+        # Add measurements only for configured channels
         configs = self.config_loader.get_all_configs()
         logger.info(f"Loaded {len(configs)} channel configurations")
 
-        for channel_num in range(1, 17):
+        for channel_num in configured_channels:
             result = measurements.get(channel_num)
             config = configs.get(channel_num)
 
@@ -2065,15 +2083,16 @@ class MainWindow(QMainWindow):
             logger.info("Adding header row...")
             header = ["QR", "TEST RESULT"]
             # Use custom names from channel config if available, otherwise use generic names
+            # Only include columns for configured channels
             configs = self.config_loader.get_all_configs()
-            for i in range(1, 17):
-                config = configs.get(i)
+            for channel_num in configured_channels:
+                config = configs.get(channel_num)
                 if config and config.name:
                     # Use custom name if configured: "CH1 (custom_name)"
-                    header.append(f"CH{i} ({config.name})")
+                    header.append(f"CH{channel_num} ({config.name})")
                 else:
                     # Use generic name if no custom name: "CH1"
-                    header.append(f"CH{i}")
+                    header.append(f"CH{channel_num}")
             header.append("Date/Time")
             rows.insert(0, header)
             logger.info(f"Header: {header}")
