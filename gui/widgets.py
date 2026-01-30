@@ -6,11 +6,84 @@ import logging
 from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QComboBox,
-    QTextEdit, QPushButton, QDialog, QToolBar, QCheckBox, QGridLayout
+    QTextEdit, QPushButton, QDialog, QToolBar, QCheckBox, QGridLayout, QStyle, QStyleOptionComboBox, QStyleOptionComboBox, QStylePainter
 )
-from PySide6.QtCore import Qt, Signal, QObject
+from PySide6.QtCore import Qt, Signal, QObject, QRect
 from PySide6.QtGui import QFont, QPalette, QColor, QTextCursor
 from typing import Optional
+
+
+class ComboBoxWithTriangle(QComboBox):
+    """
+    Custom QComboBox that draws a proper downward-pointing triangle indicator.
+    Uses Unicode triangle character for reliable rendering across all platforms.
+    """
+
+    def __init__(self, parent=None):
+        """Initialize the custom combo box.
+
+        Args:
+            parent: Parent widget.
+        """
+        super().__init__(parent)
+        self._arrow_color = "#ffffff"
+
+    def set_arrow_color(self, color: str) -> None:
+        """
+        Set the color of the dropdown arrow.
+
+        Args:
+            color: Color string (e.g., "#ffffff" or "#000000").
+        """
+        self._arrow_color = color
+        self.update()  # Trigger repaint
+
+    def paintEvent(self, event) -> None:
+        """
+        Override paint event to draw custom arrow.
+
+        Args:
+            event: Paint event.
+        """
+        from PySide6.QtGui import QPainter, QFont
+        from PySide6.QtCore import QPoint
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Get the rectangle for the combo box
+        rect = self.rect()
+
+        # Draw the combo box background and text using default style
+        option = QStyleOptionComboBox()
+        self.initStyleOption(option)
+        self.style().drawControl(QStyle.ControlElement.CE_ComboBoxLabel, option, painter, self)
+
+        # Draw custom arrow
+        arrow_rect = self.style().subControlRect(
+            QStyle.ComplexControl.CC_ComboBox,
+            option,
+            QStyle.SubControl.SC_ComboBoxArrow,
+            self
+        )
+
+        # Draw triangle character
+        painter.save()
+        arrow_font = QFont()
+        arrow_font.setPointSize(10)
+        painter.setFont(arrow_font)
+        painter.setPen(QColor(self._arrow_color))
+
+        # Center the triangle in the arrow area
+        text_rect = arrow_rect
+        text_rect.setHeight(arrow_rect.height() - 4)
+        text_rect.setWidth(arrow_rect.width() - 4)
+        text_rect.translate(2, 2)
+
+        painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, "▼")
+        painter.restore()
+
+        painter.end()
 
 
 class DigitalIndicator(QWidget):
@@ -330,14 +403,14 @@ class ChannelIndicator(QWidget):
         # Measurement type selector
         if self._is_current_channel:
             # Current channels (13-16): only AC/DC selection
-            self.measurement_combo = QComboBox()
+            self.measurement_combo = ComboBoxWithTriangle()
             self.measurement_combo.addItem("DC Current", "CURR:DC")
             self.measurement_combo.addItem("AC Current", "CURR:AC")
             self.measurement_combo.currentIndexChanged.connect(self._on_measurement_type_changed)
             controls_layout.addWidget(self.measurement_combo, stretch=1)
         else:
             # Voltage/resistance/capacitance channels (1-12): full selection
-            self.measurement_combo = QComboBox()
+            self.measurement_combo = ComboBoxWithTriangle()
             self.measurement_combo.addItem("DC Voltage", "VOLT:DC")
             self.measurement_combo.addItem("AC Voltage", "VOLT:AC")
             self.measurement_combo.addItem("2-Wire Resistance", "RES")
@@ -352,7 +425,7 @@ class ChannelIndicator(QWidget):
             controls_layout.addWidget(self.measurement_combo, stretch=1)
         
         # Range selector
-        self.range_combo = QComboBox()
+        self.range_combo = ComboBoxWithTriangle()
         self.range_combo.addItem("AUTO", "AUTO")
         self.range_combo.currentIndexChanged.connect(self._on_range_changed)
         controls_layout.addWidget(self.range_combo, stretch=1)
@@ -382,16 +455,6 @@ class ChannelIndicator(QWidget):
             QComboBox:hover {
                 background-color: #4d4d4d;
             }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 5px solid #ffffff;
-                margin-right: 5px;
-            }
             QComboBox QAbstractItemView {
                 background-color: #3d3d3d;
                 color: #ffffff;
@@ -399,6 +462,9 @@ class ChannelIndicator(QWidget):
                 border: 1px solid #4d4d4d;
             }
         """)
+        # Set arrow colors for custom combo boxes
+        self.measurement_combo.set_arrow_color("#ffffff")
+        self.range_combo.set_arrow_color("#ffffff")
 
     def update_theme(self, theme: str) -> None:
         """
@@ -426,16 +492,6 @@ class ChannelIndicator(QWidget):
                 QComboBox:hover {
                     background-color: #4d4d4d;
                 }
-                QComboBox::drop-down {
-                    border: none;
-                }
-                QComboBox::down-arrow {
-                    image: none;
-                    border-left: 5px solid transparent;
-                    border-right: 5px solid transparent;
-                    border-top: 5px solid #ffffff;
-                    margin-right: 5px;
-                }
                 QComboBox QAbstractItemView {
                     background-color: #3d3d3d;
                     color: #ffffff;
@@ -443,6 +499,9 @@ class ChannelIndicator(QWidget):
                     border: 1px solid #4d4d4d;
                 }
             """)
+            # Set arrow colors for custom combo boxes
+            self.measurement_combo.set_arrow_color("#ffffff")
+            self.range_combo.set_arrow_color("#ffffff")
         else:
             self.setStyleSheet("""
                 ChannelIndicator {
@@ -461,16 +520,6 @@ class ChannelIndicator(QWidget):
                 QComboBox:hover {
                     background-color: #f0f0f0;
                 }
-                QComboBox::drop-down {
-                    border: none;
-                }
-                QComboBox::down-arrow {
-                    image: none;
-                    border-left: 5px solid transparent;
-                    border-right: 5px solid transparent;
-                    border-top: 5px solid #000000;
-                    margin-right: 5px;
-                }
                 QComboBox QAbstractItemView {
                     background-color: #ffffff;
                     color: #000000;
@@ -478,6 +527,9 @@ class ChannelIndicator(QWidget):
                     border: 1px solid #b0b0b0;
                 }
             """)
+            # Set arrow colors for custom combo boxes
+            self.measurement_combo.set_arrow_color("#000000")
+            self.range_combo.set_arrow_color("#000000")
         # Re-apply threshold colors if thresholds are enabled
         if self._thresholds_enabled:
             self._apply_threshold_color(self._value)
@@ -872,7 +924,7 @@ class LogViewerWidget(QWidget):
         toolbar_layout.addWidget(self.filter_label)
 
         # Filter dropdown
-        self.combo_filter = QComboBox()
+        self.combo_filter = ComboBoxWithTriangle()
         self.combo_filter.addItems(["All", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
         # Only re-render when filter changes, not when new logs are added
         self.combo_filter.currentTextChanged.connect(self._on_filter_changed)
@@ -888,16 +940,6 @@ class LogViewerWidget(QWidget):
             QComboBox:hover {
                 background-color: #5d5d5d;
             }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 5px solid #ffffff;
-                margin-right: 5px;
-            }
             QComboBox QAbstractItemView {
                 background-color: #4d4d4d;
                 color: #ffffff;
@@ -905,6 +947,7 @@ class LogViewerWidget(QWidget):
                 border: 1px solid #4d4d4d;
             }
         """)
+        self.combo_filter.set_arrow_color("#ffffff")
         toolbar_layout.addWidget(self.combo_filter)
 
         # Auto-scroll checkbox
@@ -1137,16 +1180,6 @@ class LogViewerWidget(QWidget):
                     QComboBox:hover {
                         background-color: #5d5d5d;
                     }
-                    QComboBox::drop-down {
-                        border: none;
-                    }
-                    QComboBox::down-arrow {
-                        image: none;
-                        border-left: 5px solid transparent;
-                        border-right: 5px solid transparent;
-                        border-top: 5px solid #ffffff;
-                        margin-right: 5px;
-                    }
                     QComboBox QAbstractItemView {
                         background-color: #4d4d4d;
                         color: #ffffff;
@@ -1154,6 +1187,7 @@ class LogViewerWidget(QWidget):
                         border: 1px solid #4d4d4d;
                     }
             """)
+            self.combo_filter.set_arrow_color("#ffffff")
             self.chk_auto_scroll.setStyleSheet("""
                 QCheckBox {
                         color: #ffffff;
@@ -1222,16 +1256,6 @@ class LogViewerWidget(QWidget):
                     QComboBox:hover {
                         background-color: #f0f0f0;
                     }
-                    QComboBox::drop-down {
-                        border: none;
-                    }
-                    QComboBox::down-arrow {
-                        image: none;
-                        border-left: 5px solid transparent;
-                        border-right: 5px solid transparent;
-                        border-top: 5px solid #000000;
-                        margin-right: 5px;
-                    }
                     QComboBox QAbstractItemView {
                         background-color: #e0e0e0;
                         color: #000000;
@@ -1239,6 +1263,7 @@ class LogViewerWidget(QWidget):
                         border: 1px solid #b0b0b0;
                     }
             """)
+            self.combo_filter.set_arrow_color("#000000")
             self.chk_auto_scroll.setStyleSheet("""
                 QCheckBox {
                         color: #000000;

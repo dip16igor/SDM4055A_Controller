@@ -38,7 +38,7 @@ from PySide6.QtWidgets import QStyle
 from hardware.visa_interface import VisaInterface, MeasurementType, ScanDataResult
 from hardware.async_worker import AsyncScanManager
 from hardware.simulator import VisaSimulator
-from gui.widgets import ChannelIndicator, LogViewerDialog, QLogHandler, ChannelProgressIndicator
+from gui.widgets import ChannelIndicator, LogViewerDialog, QLogHandler, ChannelProgressIndicator, ComboBoxWithTriangle
 from gui.theme_manager import ThemeManager
 from config import ConfigLoader, ChannelThresholdConfig
 
@@ -181,12 +181,13 @@ class MainWindow(QMainWindow):
         self.btn_refresh_devices = QPushButton("Refresh")
         self.btn_refresh_devices.clicked.connect(self._on_refresh_devices)
 
-        self.device_combo = QComboBox()
+        self.device_combo = ComboBoxWithTriangle()
         # Minimum width to show full device names
         self.device_combo.setMinimumWidth(400)
         self.device_combo.setMinimumContentsLength(
             50)  # Minimum characters to display
         self.device_combo.currentIndexChanged.connect(self._on_device_selected)
+        self.device_combo.set_arrow_color("#ffffff")
 
         self.device_info_label = QLabel("No device connected")
 
@@ -485,16 +486,6 @@ class MainWindow(QMainWindow):
                 QComboBox:hover {
                     background-color: #5d5d5d;
                 }
-                QComboBox::drop-down {
-                    border: none;
-                }
-                QComboBox::down-arrow {
-                    image: none;
-                    border-left: 5px solid transparent;
-                    border-right: 5px solid transparent;
-                    border-top: 5px solid #ffffff;
-                    margin-right: 5px;
-                }
                 QComboBox QAbstractItemView {
                     background-color: #4d4d4d;
                     color: #ffffff;
@@ -512,6 +503,8 @@ class MainWindow(QMainWindow):
                     border: 1px solid #4a9eff;
                 }
             """)
+            # Set arrow color for device combo box
+            self.device_combo.set_arrow_color("#ffffff")
         else:
             # Light theme styles
             self.setStyleSheet("""
@@ -566,16 +559,6 @@ class MainWindow(QMainWindow):
                 QComboBox:hover {
                     background-color: #f0f0f0;
                 }
-                QComboBox::drop-down {
-                    border: none;
-                }
-                QComboBox::down-arrow {
-                    image: none;
-                    border-left: 5px solid transparent;
-                    border-right: 5px solid transparent;
-                    border-top: 5px solid #000000;
-                    margin-right: 5px;
-                }
                 QComboBox QAbstractItemView {
                     background-color: #ffffff;
                     color: #000000;
@@ -593,6 +576,8 @@ class MainWindow(QMainWindow):
                     border: 1px solid #4a9eff;
                 }
             """)
+            # Set arrow color for device combo box
+            self.device_combo.set_arrow_color("#000000")
 
     def _setup_connections(self) -> None:
         """Setup signal connections."""
