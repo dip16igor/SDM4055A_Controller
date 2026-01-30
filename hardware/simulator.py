@@ -170,6 +170,54 @@ class VisaSimulator:
             f"Simulator: Set channel {channel_num} to {measurement_type.value}")
         return True
 
+    def set_channel_range(self, channel_num: int, range_value: str) -> bool:
+        """
+        Set measurement range for a specific channel.
+
+        Args:
+            channel_num: Channel number (1-16).
+            range_value: Range value (e.g., "200 mV", "AUTO").
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        if channel_num < 1 or channel_num > 16:
+            logger.error(f"Simulator: Invalid channel number: {channel_num}")
+            return False
+
+        # Get the channel's measurement type to validate range compatibility
+        config = self._channel_configs.get(channel_num)
+        if not config:
+            logger.error(f"Simulator: No configuration for channel {channel_num}")
+            return False
+
+        # Define valid ranges for each measurement type (CS1016 supported ranges only)
+        valid_ranges_by_type = {
+            MeasurementType.VOLTAGE_DC: ["200 mV", "2 V", "20 V", "200 V", "AUTO"],
+            MeasurementType.VOLTAGE_AC: ["200 mV", "2 V", "20 V", "200 V", "AUTO"],
+            MeasurementType.CURRENT_DC: ["2 A"],  # CS1016 only supports 2A for current
+            MeasurementType.CURRENT_AC: ["2 A"],  # CS1016 only supports 2A for current
+            MeasurementType.RESISTANCE_2WIRE: ["200 Ohm", "2 kOhm", "20 kOhm", "200 kOhm", "2 MOhm", "10 MOhm", "100 MOhm", "AUTO"],
+            MeasurementType.RESISTANCE_4WIRE: ["200 Ohm", "2 kOhm", "20 kOhm", "200 kOhm", "2 MOhm", "10 MOhm", "100 MOhm", "AUTO"],
+            MeasurementType.CAPACITANCE: ["2 nF", "20 nF", "200 nF", "2 uF", "20 uF", "200 uF", "10000 uF", "AUTO"],
+            MeasurementType.FREQUENCY: ["AUTO"],
+            MeasurementType.DIODE: ["AUTO"],
+            MeasurementType.CONTINUITY: ["AUTO"],
+            MeasurementType.TEMP_RTD: ["AUTO"],
+            MeasurementType.TEMP_THERMOCOUPLE: ["AUTO"],
+        }
+
+        valid_ranges = valid_ranges_by_type.get(config.measurement_type, ["AUTO"])
+
+        if range_value not in valid_ranges:
+            logger.error(f"Simulator: Invalid range value '{range_value}' for channel {channel_num} with measurement type {config.measurement_type.value}")
+            logger.error(f"Simulator: Valid ranges for {config.measurement_type.value} are: {', '.join(valid_ranges)}")
+            return False
+
+        self._channel_configs[channel_num].range_value = range_value
+        logger.info(f"Simulator: Set channel {channel_num} range to {range_value}")
+        return True
+
     def switch_channel(self, channel_num: int) -> bool:
         """
         Simulate switching to a specific channel.
