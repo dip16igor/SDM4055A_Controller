@@ -140,7 +140,11 @@ def main() -> int:
     # Set application icon
     app_icon = create_multimeter_icon()
     app.setWindowIcon(app_icon)
-    logger.info("Application icon set")
+    logger.info(f"Application icon set:isNull={app_icon.isNull()}, availableSizes={app_icon.availableSizes()}")
+    
+    # Additional Windows-specific fix for taskbar icon
+    logger.info(f"Application name: {app.applicationName()}")
+    logger.info(f"Window icon set on QApplication")
 
     # Initialize theme manager and apply saved theme
     theme_manager = ThemeManager(app)

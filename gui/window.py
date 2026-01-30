@@ -104,7 +104,9 @@ class MainWindow(QMainWindow):
         self.resize(1200, 800)
         
         # Set window icon
-        self.setWindowIcon(self._create_multimeter_icon())
+        window_icon = self._create_multimeter_icon()
+        self.setWindowIcon(window_icon)
+        logger.info(f"Window icon set:isNull={window_icon.isNull()}, availableSizes={window_icon.availableSizes()}")
 
         # Theme manager
         self._theme_manager = theme_manager
