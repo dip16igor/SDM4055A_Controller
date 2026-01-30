@@ -809,7 +809,7 @@ class MainWindow(QMainWindow):
             self.scan_manager.stop()
 
         # Create new scan manager
-        self.scan_manager = AsyncScanManager(device_interface)
+        self.scan_manager = AsyncScanManager(device_interface, self.config_loader)
 
         # Configure device with channel measurement types and ranges
         channel_configs = self.get_all_channel_measurement_types()
@@ -856,7 +856,7 @@ class MainWindow(QMainWindow):
         self.scan_progress.start_scan()
 
         # Create temporary scan manager for single scan
-        temp_scan_manager = AsyncScanManager(device_interface)
+        temp_scan_manager = AsyncScanManager(device_interface, self.config_loader)
 
         # Configure device with channel measurement types and ranges
         channel_configs = self.get_all_channel_measurement_types()
@@ -1357,6 +1357,10 @@ class MainWindow(QMainWindow):
         for indicator in self.channel_indicators:
             indicator.clear_thresholds()
         
+        # Reset all channels to configured state first
+        for indicator in self.channel_indicators:
+            indicator.set_configured(True)
+        
         # Apply configuration to each configured channel
         for channel_num, config in configs.items():
             if 1 <= channel_num <= 16:
@@ -1387,7 +1391,14 @@ class MainWindow(QMainWindow):
                     f"upper={config.upper_threshold}"
                 )
         
+        # Mark unconfigured channels as gray
         configured_channels = self.config_loader.get_configured_channels()
+        for i in range(1, 17):
+            if i not in configured_channels:
+                indicator = self.channel_indicators[i - 1]
+                indicator.set_configured(False)
+                logger.info(f"Channel {i} marked as unconfigured (gray)")
+        
         logger.info(f"Applied configuration to {len(configured_channels)} channels: {configured_channels}")
 
     @Slot(int, str)

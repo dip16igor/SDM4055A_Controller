@@ -338,6 +338,7 @@ class ChannelIndicator(QWidget):
         self._is_current_channel = channel_num > 12
         self._range_value = "AUTO"  # Default range
         self._current_theme = "dark"  # Default theme
+        self._is_configured = True  # By default, all channels are configured
         
         # Set default unit based on channel type
         if self._is_current_channel:
@@ -436,6 +437,95 @@ class ChannelIndicator(QWidget):
         # Apply card style
         self._apply_card_style()
 
+    def set_configured(self, configured: bool) -> None:
+        """
+        Set whether this channel is configured.
+        
+        Args:
+            configured: True if channel is configured, False otherwise.
+        """
+        self._is_configured = configured
+        self._update_configured_style()
+
+    def is_configured(self) -> bool:
+        """
+        Check if this channel is configured.
+        
+        Returns:
+            True if channel is configured, False otherwise.
+        """
+        return self._is_configured
+
+    def _update_configured_style(self) -> None:
+        """Update widget styling based on configured state."""
+        if not self._is_configured:
+            # Apply gray color for unconfigured channels
+            if self._current_theme == "dark":
+                self.setStyleSheet("""
+                    ChannelIndicator {
+                        background-color: #1a1a1a;
+                        border-radius: 10px;
+                        border: 1px solid #2a2a2a;
+                    }
+                    QComboBox {
+                        background-color: #2a2a2a;
+                        color: #666666;
+                        border: 1px solid #3a3a3a;
+                        border-radius: 4px;
+                        padding: 5px;
+                        min-height: 25px;
+                    }
+                    QComboBox:hover {
+                        background-color: #3a3a3a;
+                    }
+                    QComboBox QAbstractItemView {
+                        background-color: #2a2a2a;
+                        color: #666666;
+                        selection-background-color: #3a3a3a;
+                        border: 1px solid #3a3a3a;
+                    }
+                    QLabel {
+                        color: #666666;
+                    }
+                """)
+                # Set arrow colors for custom combo boxes
+                self.measurement_combo.set_arrow_color("#666666")
+                self.range_combo.set_arrow_color("#666666")
+            else:
+                self.setStyleSheet("""
+                    ChannelIndicator {
+                        background-color: #e0e0e0;
+                        border-radius: 10px;
+                        border: 1px solid #c0c0c0;
+                    }
+                    QComboBox {
+                        background-color: #d0d0d0;
+                        color: #888888;
+                        border: 1px solid #b0b0b0;
+                        border-radius: 4px;
+                        padding: 5px;
+                        min-height: 25px;
+                    }
+                    QComboBox:hover {
+                        background-color: #e0e0e0;
+                    }
+                    QComboBox QAbstractItemView {
+                        background-color: #d0d0d0;
+                        color: #888888;
+                        selection-background-color: #e0e0e0;
+                        border: 1px solid #b0b0b0;
+                    }
+                    QLabel {
+                        color: #888888;
+                    }
+                """)
+                # Set arrow colors for custom combo boxes
+                self.measurement_combo.set_arrow_color("#888888")
+                self.range_combo.set_arrow_color("#888888")
+        else:
+            # Re-apply normal theme style
+            self.update_theme(self._current_theme)
+
     def _apply_card_style(self) -> None:
         """Apply card-style appearance with shadow effects."""
         self.setStyleSheet("""
@@ -474,6 +564,11 @@ class ChannelIndicator(QWidget):
             theme: Theme string ("dark" or "light").
         """
         self._current_theme = theme
+        # If channel is not configured, apply gray style instead of normal theme
+        if not self._is_configured:
+            self._update_configured_style()
+            return
+        
         if theme == "dark":
             self.setStyleSheet("""
                 ChannelIndicator {

@@ -294,6 +294,40 @@ class ConfigLoader:
             return self.config_file_path.name
         return ""
     
+    def get_min_channel(self) -> Optional[int]:
+        """
+        Get the minimum configured channel number.
+        
+        Returns:
+            Minimum channel number if configs exist, None otherwise.
+        """
+        if not self.configs:
+            return None
+        return min(self.configs.keys())
+    
+    def get_max_channel(self) -> Optional[int]:
+        """
+        Get the maximum configured channel number.
+        
+        Returns:
+            Maximum channel number if configs exist, None otherwise.
+        """
+        if not self.configs:
+            return None
+        return max(self.configs.keys())
+    
+    def is_channel_configured(self, channel_num: int) -> bool:
+        """
+        Check if a specific channel is configured.
+        
+        Args:
+            channel_num: Channel number to check (1-16).
+            
+        Returns:
+            True if channel is configured, False otherwise.
+        """
+        return channel_num in self.configs
+    
     def clear(self) -> None:
         """Clear all loaded configurations."""
         self.configs.clear()

@@ -622,14 +622,18 @@ class VisaInterface:
             self._check_device_responsive()
             return False
 
-    def configure_all_scan_channels(self) -> bool:
+    def configure_all_scan_channels(self, scan_min: int = 1, scan_max: int = 16) -> bool:
         """
-        Configure all channels for scanning.
+        Configure channels for scanning within specified range.
+
+        Args:
+            scan_min: Minimum channel number to configure (default: 1).
+            scan_max: Maximum channel number to configure (default: 16).
 
         Returns:
             True if successful, False otherwise.
         """
-        for channel_num in range(1, 17):
+        for channel_num in range(scan_min, scan_max + 1):
             if not self.configure_scan_channel(channel_num):
                 logger.error(f"Failed to configure channel {channel_num}")
                 # Check if device is still responsive after configuration failure
@@ -850,11 +854,15 @@ class VisaInterface:
             logger.error(f"Unexpected error during scan data retrieval on channel {channel_num}: {e}")
             return None
 
-    def read_all_channels(self) -> Dict[int, Optional[ScanDataResult]]:
+    def read_all_channels(self, config_loader=None) -> Dict[int, Optional[ScanDataResult]]:
         """
-        Read measurements from all 16 channels.
+        Read measurements from all 16 channels or configured channel range.
         
         First tries CS1016 scan mode, falls back to channel-by-channel reading if scan mode fails.
+        When config_loader is provided, only scans channels from min to max configured channels.
+        
+        Args:
+            config_loader: Optional ConfigLoader instance to determine scan range.
         
         Returns:
             Dictionary mapping channel numbers to ScanDataResult objects (or None if failed).
@@ -864,6 +872,21 @@ class VisaInterface:
             if not self._connected or not self.instrument:
                 logger.warning("Attempted to read while not connected")
                 return {}
+            
+            # Determine scan range based on config
+            scan_min = 1
+            scan_max = 16
+            if config_loader is not None:
+                min_channel = config_loader.get_min_channel()
+                max_channel = config_loader.get_max_channel()
+                if min_channel is not None and max_channel is not None:
+                    scan_min = min_channel
+                    scan_max = max_channel
+                    logger.info(f"Config-based scan range: channels {scan_min} to {scan_max}")
+                else:
+                    logger.info("No config loaded, scanning all channels (1-16)")
+            else:
+                logger.info("No config loader provided, scanning all channels (1-16)")
 
             # Check if device is still responsive before attempting operations
             if not self._check_device_responsive():
@@ -882,10 +905,10 @@ class VisaInterface:
                             logger.error("Device disconnected during scan mode enable")
                             # Device is already disconnected by _check_device_responsive(), return empty results
                             return {}
-                        return self._read_channels_sequentially()
+                        return self._read_channels_sequentially(config_loader, scan_min, scan_max)
                 
-                # Configure all channels
-                if not self.configure_all_scan_channels():
+                # Configure all channels in scan range
+                if not self.configure_all_scan_channels(scan_min, scan_max):
                     logger.warning("Channel configuration failed, checking if device is disconnected...")
                     # Check device responsiveness before fallback - this will detect if device was unplugged
                     if not self._check_device_responsive():
@@ -893,17 +916,17 @@ class VisaInterface:
                         # Device is already disconnected by _check_device_responsive(), return empty results
                         return {}
                     # Device is still responsive, configuration failed for another reason, try fallback
-                    return self._read_channels_sequentially()
+                    return self._read_channels_sequentially(config_loader, scan_min, scan_max)
                 
-                # Set scan limits (all 16 channels)
-                if not self.set_scan_limits(1, 16):
+                # Set scan limits based on config or default to all channels
+                if not self.set_scan_limits(scan_min, scan_max):
                     logger.warning("Scan limits failed, falling back to sequential reading")
                     # Check device responsiveness before fallback
                     if not self._check_device_responsive():
                         logger.error("Device disconnected during scan limits setup")
                         # Device is already disconnected by _check_device_responsive(), return empty results
                         return {}
-                    return self._read_channels_sequentially()
+                    return self._read_channels_sequentially(config_loader, scan_min, scan_max)
                 
                 # Start scan
                 if not self.start_scan():
@@ -913,7 +936,7 @@ class VisaInterface:
                         logger.error("Device disconnected during scan start")
                         # Device is already disconnected by _check_device_responsive(), return empty results
                         return {}
-                    return self._read_channels_sequentially()
+                    return self._read_channels_sequentially(config_loader, scan_min, scan_max)
                 
                 # Wait for scan to complete
                 max_wait_time = 30  # 30 seconds maximum wait time
@@ -931,10 +954,10 @@ class VisaInterface:
                 else:
                     logger.warning("Scan timeout - may not have completed")
                 
-                # Read data from all channels
-                logger.info("Starting to read data from all 16 channels...")
+                # Read data from channels in scan range
+                logger.info(f"Starting to read data from channels {scan_min} to {scan_max}...")
                 results = {}
-                for channel_num in range(1, 17):
+                for channel_num in range(scan_min, scan_max + 1):
                     # Check device responsiveness before reading each channel
                     if not self._check_device_responsive():
                         logger.error(f"Device disconnected while reading channel {channel_num}")
@@ -958,25 +981,30 @@ class VisaInterface:
                     return {}
                 logger.error(f"VISA error during multi-channel scan: {e}")
                 logger.info("Falling back to sequential channel reading")
-                return self._read_channels_sequentially()
+                return self._read_channels_sequentially(config_loader, scan_min, scan_max)
             except Exception as e:
                 logger.error(f"Unexpected error during multi-channel scan: {e}")
                 logger.info("Falling back to sequential channel reading")
-                return self._read_channels_sequentially()
+                return self._read_channels_sequentially(config_loader, scan_min, scan_max)
     
-    def _read_channels_sequentially(self) -> Dict[int, Optional[ScanDataResult]]:
+    def _read_channels_sequentially(self, config_loader=None, scan_min: int = 1, scan_max: int = 16) -> Dict[int, Optional[ScanDataResult]]:
         """
-        Read all channels sequentially (channel by channel) without scan mode.
+        Read channels sequentially (channel by channel) without scan mode.
         
         This is a fallback method for devices that don't support CS1016 scan mode.
+        
+        Args:
+            config_loader: Optional ConfigLoader instance to determine scan range.
+            scan_min: Minimum channel number to read (default: 1).
+            scan_max: Maximum channel number to read (default: 16).
         
         Returns:
             Dictionary mapping channel numbers to ScanDataResult objects (or None if failed).
         """
-        logger.info("Reading channels sequentially...")
+        logger.info(f"Reading channels sequentially from {scan_min} to {scan_max}...")
         results = {}
         
-        for channel_num in range(1, 17):
+        for channel_num in range(scan_min, scan_max + 1):
             # Check device responsiveness before reading each channel
             if not self._check_device_responsive():
                 logger.error(f"Device disconnected during sequential reading at channel {channel_num}")

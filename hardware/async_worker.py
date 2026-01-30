@@ -28,15 +28,17 @@ class ScanWorker(QObject):
     scan_started = Signal()  # Emitted when scanning starts
     scan_stopped = Signal()  # Emitted when scanning stops
 
-    def __init__(self, device):
+    def __init__(self, device, config_loader=None):
         """
         Initialize the scan worker.
 
         Args:
             device: Device interface (VisaInterface or VisaSimulator)
+            config_loader: Optional ConfigLoader instance for config-based scanning
         """
         super().__init__()
         self._device = device
+        self._config_loader = config_loader
         self._running = False
         self._mutex = QMutex()
         self._interval = 2000  # Default 2 seconds
@@ -78,8 +80,8 @@ class ScanWorker(QObject):
                     self.scan_error.emit(error_msg)
                     break
 
-                # Read all channels
-                measurements = self._device.read_all_channels()
+                # Read all channels (with config-based range if config_loader is provided)
+                measurements = self._device.read_all_channels(self._config_loader)
 
                 # Check if device got disconnected during read
                 if not self._device.is_connected():
@@ -194,17 +196,19 @@ class SingleScanWorker(QObject):
     channel_read = Signal(int, object)  # Emitted when a single channel is read
     scan_started = Signal()  # Emitted when scanning starts
     
-    def __init__(self, device, channel_configs: dict):
+    def __init__(self, device, channel_configs: dict, config_loader=None):
         """
         Initialize single scan worker.
         
         Args:
             device: Device interface (VisaInterface or VisaSimulator)
             channel_configs: Dictionary of channel configurations
+            config_loader: Optional ConfigLoader instance for config-based scanning
         """
         super().__init__()
         self._device = device
         self._channel_configs = channel_configs
+        self._config_loader = config_loader
     
     def run_single_scan(self) -> None:
         """Perform a single scan of all channels."""
@@ -259,8 +263,8 @@ class SingleScanWorker(QObject):
                         QThread.currentThread().quit()
                         return
             
-            # Read all channels
-            measurements = self._device.read_all_channels()
+            # Read all channels (with config-based range if config_loader is provided)
+            measurements = self._device.read_all_channels(self._config_loader)
             
             # Check if device got disconnected during read
             if not self._device.is_connected():
@@ -356,15 +360,17 @@ class AsyncScanManager(QObject):
     scan_started = Signal()
     scan_stopped = Signal()
 
-    def __init__(self, device):
+    def __init__(self, device, config_loader=None):
         """
         Initialize the async scan manager.
 
         Args:
             device: Device interface (VisaInterface or VisaSimulator)
+            config_loader: Optional ConfigLoader instance for config-based scanning
         """
         super().__init__()
         self._device = device
+        self._config_loader = config_loader
         self._thread: Optional[QThread] = None
         self._worker: Optional[ScanWorker] = None
         self._scanning = False
@@ -391,7 +397,7 @@ class AsyncScanManager(QObject):
         try:
             # Create thread and worker
             self._thread = QThread()
-            self._worker = ScanWorker(self._device)
+            self._worker = ScanWorker(self._device, self._config_loader)
             self._worker.moveToThread(self._thread)
 
             # Set interval
@@ -525,8 +531,8 @@ class AsyncScanManager(QObject):
                     self.scan_error.emit("Channel configuration failed")
                     return
 
-            # Read all channels
-            measurements = self._device.read_all_channels()
+            # Read all channels (with config-based range if config_loader is provided)
+            measurements = self._device.read_all_channels(self._config_loader)
 
             # Check if device got disconnected during read
             if not self._device.is_connected():
@@ -631,7 +637,7 @@ class AsyncScanManager(QObject):
             self._single_scan_thread = QThread()
             self._single_scan_thread.setObjectName("SingleScanThread")  # Set thread name for debugging
             
-            self._single_scan_worker = SingleScanWorker(self._device, self._channel_configs)
+            self._single_scan_worker = SingleScanWorker(self._device, self._channel_configs, self._config_loader)
             self._single_scan_worker.moveToThread(self._single_scan_thread)
 
             # Forward worker signals to manager signals
