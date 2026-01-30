@@ -47,6 +47,8 @@ class ComboBoxWithTriangle(QComboBox):
         """
         from PySide6.QtGui import QPainter, QFont
         from PySide6.QtCore import QPoint
+        import logging
+        logger = logging.getLogger(__name__)
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -57,7 +59,11 @@ class ComboBoxWithTriangle(QComboBox):
         # Draw the combo box background and text using default style
         option = QStyleOptionComboBox()
         self.initStyleOption(option)
-        self.style().drawControl(QStyle.ControlElement.CE_ComboBoxLabel, option, painter, self)
+        
+        # FIX: Draw the complete combo box (including borders) instead of just the label
+        # This ensures borders defined in stylesheets are properly rendered
+        self.style().drawComplexControl(QStyle.ComplexControl.CC_ComboBox, option, painter, self)
+        logger.debug("ComboBoxWithTriangle: Drew complete combo box with borders (CC_ComboBox)")
 
         # Draw custom arrow
         arrow_rect = self.style().subControlRect(
