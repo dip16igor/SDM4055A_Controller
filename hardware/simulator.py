@@ -8,7 +8,7 @@ from typing import Optional, Dict, List
 import logging
 from PySide6.QtCore import QMutex, QMutexLocker
 
-from .visa_interface import MeasurementType, ChannelConfig
+from .visa_interface import MeasurementType, ChannelConfig, ScanDataResult
 
 logger = logging.getLogger(__name__)
 
@@ -235,7 +235,33 @@ class VisaSimulator:
         logger.debug(f"Simulator: Switched to channel {channel_num}")
         return True
 
-    def read_channel_measurement(self, channel_num: int) -> Optional[float]:
+    def _get_unit_info(self, measurement_type: MeasurementType) -> tuple[str, str]:
+        """
+        Get unit information for a measurement type.
+
+        Args:
+            measurement_type: The measurement type.
+
+        Returns:
+            Tuple of (base_unit, full_unit).
+        """
+        unit_mapping = {
+            MeasurementType.VOLTAGE_DC: ("V", "VDC"),
+            MeasurementType.VOLTAGE_AC: ("V", "VAC"),
+            MeasurementType.CURRENT_DC: ("A", "ADC"),
+            MeasurementType.CURRENT_AC: ("A", "AAC"),
+            MeasurementType.RESISTANCE_2WIRE: ("Ω", "OHM"),
+            MeasurementType.RESISTANCE_4WIRE: ("Ω", "OHM"),
+            MeasurementType.CAPACITANCE: ("F", "F"),
+            MeasurementType.FREQUENCY: ("Hz", "HZ"),
+            MeasurementType.DIODE: ("V", "DIOD"),
+            MeasurementType.CONTINUITY: ("Ω", "CONT"),
+            MeasurementType.TEMP_RTD: ("°C", "DEGC"),
+            MeasurementType.TEMP_THERMOCOUPLE: ("°C", "DEGC"),
+        }
+        return unit_mapping.get(measurement_type, ("", ""))
+
+    def read_channel_measurement(self, channel_num: int) -> Optional[ScanDataResult]:
         """
         Simulate reading measurement from a specific channel.
 
@@ -243,7 +269,7 @@ class VisaSimulator:
             channel_num: Channel number (1-16).
 
         Returns:
-            Simulated measurement value as float, or None if read failed.
+            ScanDataResult with value, unit, and full_unit, or None if read failed.
         """
         if not self._connected:
             logger.warning("Simulator: Attempted to read while not connected")
@@ -264,20 +290,30 @@ class VisaSimulator:
             base_value = self._base_values.get(config.measurement_type, 0.0)
             noise = random.uniform(-self._noise_level, self._noise_level)
             value = base_value + noise
+            
+            # Get unit information for this measurement type
+            base_unit, full_unit = self._get_unit_info(config.measurement_type)
+            
             logger.debug(
-                f"Simulator: Read value {value:.6f} from channel {channel_num}")
-            return value
+                f"Simulator: Read value {value:.6f} {base_unit} from channel {channel_num}")
+            
+            return ScanDataResult(
+                value=value,
+                unit=base_unit,
+                full_unit=full_unit,
+                range_info=config.range_value
+            )
         except Exception as e:
             logger.error(
                 f"Simulator: Unexpected error during read on channel {channel_num}: {e}")
             return None
 
-    def read_all_channels(self) -> Dict[int, Optional[float]]:
+    def read_all_channels(self) -> Dict[int, Optional[ScanDataResult]]:
         """
         Simulate reading measurements from all 16 channels sequentially.
 
         Returns:
-            Dictionary mapping channel numbers to simulated measurement values.
+            Dictionary mapping channel numbers to ScanDataResult objects (or None if failed).
         """
         with QMutexLocker(self._mutex):
             results = {}
