@@ -174,6 +174,55 @@ The device communicates via USB using VISA protocol, which is an industry standa
   - Data file inclusion: `gui`, `hardware` directories
   - Standalone Windows executable output
 
+## Recent Changes (2026-01-30)
+
+### New Features
+1. **Config-Based Channel Range Scanning**
+     - System now scans only channels from minimum to maximum channel numbers defined in configuration file
+     - When no configuration file is loaded, all 16 channels (1-16) are scanned as before (backward compatible)
+     - Unconfigured channels are displayed in gray color in the GUI to visually distinguish them from configured channels
+     - Added `ConfigLoader` methods:
+       - `get_min_channel()` - Returns minimum configured channel number
+       - `get_max_channel()` - Returns maximum configured channel number
+       - `is_channel_configured(channel_num)` - Checks if a channel is configured
+     - Modified `VisaInterface.read_all_channels()` to accept optional `config_loader` parameter
+     - Calculates scan range from config and uses SCPI commands `ROUT:LIMI:LOW` and `ROUT:LIMI:HIGH`
+     - Updated `AsyncScanManager` to pass `config_loader` to all scan workers
+     - Fixed `ScanWorker` and `SingleScanWorker` to properly receive and use `config_loader`
+
+### Modified Files
+- **config/config_loader.py**:
+   - Added `get_min_channel()` method (lines 297-305)
+   - Added `get_max_channel()` method (lines 307-315)
+   - Added `is_channel_configured(channel_num)` method (lines 317-325)
+
+- **hardware/visa_interface.py**:
+   - Modified `read_all_channels()` (line 857) to accept optional `config_loader` parameter
+   - Calculates scan range from config (lines 876-889)
+   - Uses `set_scan_limits(scan_min, scan_max)` with config-based values (line 922)
+   - Modified `configure_all_scan_channels()` to accept `scan_min` and `scan_max` parameters (line 625)
+   - Modified `_read_channels_sequentially()` to accept config_loader and scan range (line 990)
+
+- **gui/widgets.py**:
+   - Added `_is_configured` attribute to `ChannelIndicator.__init__()` (line 340)
+   - Added `set_configured()` method (lines 448-455)
+   - Added `is_configured()` method (lines 457-462)
+   - Added `_update_configured_style()` method (lines 464-521)
+   - Modified `update_theme()` to respect configured state (lines 523-568)
+
+- **gui/window.py**:
+   - Modified `_apply_configuration()` to mark unconfigured channels (lines 1352-1392)
+   - Updated `AsyncScanManager` instantiation to pass `config_loader` (lines 812, 859)
+
+- **hardware/async_worker.py**:
+   - Modified `ScanWorker.__init__()` to accept optional `config_loader` (line 31)
+   - Updated `AsyncScanManager.start()` to pass config_loader to ScanWorker (line 398)
+   - Modified `SingleScanWorker.__init__()` to accept `config_loader` parameter (line 197)
+   - Updated `AsyncScanManager.start_single_scan()` to pass config_loader to SingleScanWorker (line 638)
+
+### Archived Proposals
+- **add-config-based-channel-range** → archived in `openspec/changes/archive/2026-01-30-add-config-based-channel-range/`
+
 ## Recent Changes (2026-01-29)
 
 ### New Features
