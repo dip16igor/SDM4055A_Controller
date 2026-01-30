@@ -79,6 +79,11 @@ class ComboBoxWithTriangle(QComboBox):
         bg_color = option.palette.color(QPalette.ColorRole.Button)
         painter.fillRect(arrow_rect, bg_color)
         
+        # FIX: Explicitly draw the text label to ensure selected text is visible
+        # This is needed because drawComplexControl might not render the text properly
+        self.style().drawControl(QStyle.ControlElement.CE_ComboBoxLabel, option, painter, self)
+        logger.debug("ComboBoxWithTriangle: Drew text label explicitly")
+        
         # Draw triangle character
         painter.save()
         arrow_font = QFont()
