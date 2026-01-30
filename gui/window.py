@@ -13,7 +13,7 @@ from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
 from openpyxl.utils import get_column_letter
 
 from PySide6.QtCore import QObject, Signal, Slot, Qt
-from PySide6.QtGui import QAction, QMouseEvent, QIcon, QPainter, QPainterPath, QColor, QFontMetrics
+from PySide6.QtGui import QAction, QMouseEvent, QIcon, QPainter, QPainterPath, QColor, QFontMetrics, QPixmap, QPen, QBrush, QFont
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -102,6 +102,9 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle(f"SDM4055A-SC Multimeter Controller v{version}")
         self.resize(1200, 800)
+        
+        # Set window icon
+        self.setWindowIcon(self._create_multimeter_icon())
 
         # Theme manager
         self._theme_manager = theme_manager
@@ -416,6 +419,101 @@ class MainWindow(QMainWindow):
         # Draw small white dot in black circle (right)
         painter.setBrush(QColor("#ffffff"))
         painter.drawEllipse(center_x - dot_radius, center_y + radius // 2 - dot_radius, dot_radius * 2, dot_radius * 2)
+        
+        # End painting
+        painter.end()
+        
+        # Create icon from pixmap
+        return QIcon(pixmap)
+
+    def _create_multimeter_icon(self) -> QIcon:
+        """
+        Create a custom multimeter icon for the application.
+        
+        The icon features a digital multimeter with:
+        - A rectangular body with rounded corners
+        - A digital display screen showing measurement values
+        - Two probe connectors (red and black)
+        - A modern, professional design
+        
+        Returns:
+            QIcon: The created multimeter icon
+        """
+        # Create a 64x64 pixmap
+        size = 64
+        pixmap = QPixmap(size, size)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        
+        # Create painter
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        # Scale factors for drawing
+        scale = size / 64.0
+        
+        # Draw multimeter body (dark gray rounded rectangle)
+        body_rect = (4 * scale, 8 * scale, 56 * scale, 48 * scale)
+        painter.setPen(QPen(QColor(60, 60, 60), 2))
+        painter.setBrush(QBrush(QColor(45, 45, 45)))
+        painter.drawRoundedRect(*body_rect, 6 * scale, 6 * scale)
+        
+        # Draw display screen (light blue/teal gradient effect)
+        screen_rect = (10 * scale, 14 * scale, 44 * scale, 18 * scale)
+        painter.setPen(QPen(QColor(30, 30, 30), 1))
+        painter.setBrush(QBrush(QColor(20, 40, 50)))
+        painter.drawRoundedRect(*screen_rect, 2 * scale, 2 * scale)
+        
+        # Draw measurement value on screen (digital numbers)
+        painter.setPen(QColor(0, 255, 200))
+        font = painter.font()
+        font.setPixelSize(10 * scale)
+        font.setBold(True)
+        painter.setFont(font)
+        painter.drawText(int(screen_rect[0] + 2 * scale), int(screen_rect[1] + 12 * scale), "5.000 V")
+        
+        # Draw unit label below value
+        font.setPixelSize(5 * scale)
+        painter.setFont(font)
+        painter.setPen(QColor(0, 200, 150))
+        painter.drawText(int(screen_rect[0] + 30 * scale), int(screen_rect[1] + 15 * scale), "DC")
+        
+        # Draw red probe connector (top right)
+        painter.setPen(QPen(QColor(40, 40, 40), 1))
+        painter.setBrush(QBrush(QColor(200, 30, 30)))
+        painter.drawEllipse(int(44 * scale), int(36 * scale), int(8 * scale), int(8 * scale))
+        # Red probe inner circle
+        painter.setBrush(QBrush(QColor(150, 20, 20)))
+        painter.drawEllipse(int(46 * scale), int(38 * scale), int(4 * scale), int(4 * scale))
+        
+        # Draw black probe connector (bottom right)
+        painter.setPen(QPen(QColor(40, 40, 40), 1))
+        painter.setBrush(QBrush(QColor(40, 40, 40)))
+        painter.drawEllipse(int(44 * scale), int(46 * scale), int(8 * scale), int(8 * scale))
+        # Black probe inner circle
+        painter.setBrush(QBrush(QColor(20, 20, 20)))
+        painter.drawEllipse(int(46 * scale), int(48 * scale), int(4 * scale), int(4 * scale))
+        
+        # Draw brand label at bottom
+        font.setPixelSize(4 * scale)
+        painter.setFont(font)
+        painter.setPen(QColor(120, 120, 120))
+        painter.drawText(int(10 * scale), int(52 * scale), "SDM4055A")
+        
+        # Draw measurement mode indicator
+        painter.setPen(QPen(QColor(0, 255, 200, 100), 1))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRect(int(12 * scale), int(38 * scale), int(26 * scale), int(14 * scale))
+        
+        # Draw mode symbols (V, A, Ω)
+        font.setPixelSize(6 * scale)
+        font.setBold(True)
+        painter.setFont(font)
+        painter.setPen(QColor(0, 200, 150))
+        painter.drawText(int(14 * scale), int(48 * scale), "V")
+        painter.setPen(QColor(100, 100, 100))
+        painter.drawText(int(22 * scale), int(48 * scale), "A")
+        painter.setPen(QColor(100, 100, 100))
+        painter.drawText(int(30 * scale), int(48 * scale), "Ω")
         
         # End painting
         painter.end()
