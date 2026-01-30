@@ -1693,7 +1693,7 @@ class MainWindow(QMainWindow):
         # Process each data row (skip header)
         for row_idx, row in enumerate(rows[1:], start=2):
             for col_name, col_idx in col_mapping.items():
-                # Check if this is a channel column (CH1 through CH12)
+                # Check if this is a channel column (CH1 through CH16)
                 if col_name.startswith('CH'):
                     # Extract channel number using regex to handle custom names in parentheses
                     import re
@@ -1702,7 +1702,7 @@ class MainWindow(QMainWindow):
                         channel_str = match.group(1)  # Extract just the number
                         try:
                             channel_num = int(channel_str)
-                            if 1 <= channel_num <= 12:
+                            if 1 <= channel_num <= 16:
                                 # Get cell value
                                 cell_value = row[col_idx - 1] if col_idx - 1 < len(row) else ""
 
@@ -1900,9 +1900,9 @@ class MainWindow(QMainWindow):
         failed_channels = []
 
         for channel_num, result in measurements.items():
-            # Only check channels 1-12 (voltage channels)
-            if channel_num < 1 or channel_num > 12:
-                logger.debug(f"Skipping channel {channel_num} (not in range 1-12)")
+            # Check all 16 channels
+            if channel_num < 1 or channel_num > 16:
+                logger.debug(f"Skipping channel {channel_num} (not in range 1-16)")
                 continue
 
             if result is None:
@@ -2009,11 +2009,11 @@ class MainWindow(QMainWindow):
         row_data = [serial_number, result_string]
         logger.info(f"Building row data. Initial columns: {row_data}")
 
-        # Add voltage measurements for channels 1-12
+        # Add measurements for all 16 channels
         configs = self.config_loader.get_all_configs()
         logger.info(f"Loaded {len(configs)} channel configurations")
 
-        for channel_num in range(1, 13):
+        for channel_num in range(1, 17):
             result = measurements.get(channel_num)
             config = configs.get(channel_num)
 
@@ -2066,7 +2066,7 @@ class MainWindow(QMainWindow):
             header = ["QR", "TEST RESULT"]
             # Use custom names from channel config if available, otherwise use generic names
             configs = self.config_loader.get_all_configs()
-            for i in range(1, 13):
+            for i in range(1, 17):
                 config = configs.get(i)
                 if config and config.name:
                     # Use custom name if configured: "CH1 (custom_name)"
