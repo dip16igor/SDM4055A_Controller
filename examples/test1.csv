@@ -1,0 +1,42 @@
+# SDM4055A-SC Channel Configuration File
+# 
+# Format: channel,measurement_type,range,lower_threshold,upper_threshold
+#
+# Columns:
+#   channel: Channel number (1-16)
+#   measurement_type: Measurement type (see valid types below)
+#   range: Measurement range (AUTO or specific value)
+#   lower_threshold: Optional lower threshold (leave empty for no threshold)
+#   upper_threshold: Optional upper threshold (leave empty for no threshold)
+#
+# Valid measurement types:
+#   VOLT:DC - DC Voltage
+#   VOLT:AC - AC Voltage
+#   RES - 2-Wire Resistance
+#   FRES - 4-Wire Resistance
+#   CAP - Capacitance
+#   FREQ - Frequency
+#   DIOD - Diode
+#   CONT - Continuity
+#   TEMP:RTD - RTD Temperature
+#   TEMP:THER - Thermocouple
+#   CURR:DC - DC Current (channels 13-16 only)
+#   CURR:AC - AC Current (channels 13-16 only)
+#
+# Notes:
+#   - Channels 1-12: Voltage, Resistance, Capacitance, etc.
+#   - Channels 13-16: Current measurements only
+#   - Thresholds are optional - leave empty if not needed
+#   - Values within thresholds display in GREEN
+#   - Values outside thresholds display in RED
+#   - You can configure only the channels you need
+
+# Example configurations:
+channel,Name,measurement_type,range,lower_threshold,upper_threshold
+1, 3.3VD, VOLT:DC,200 mV,150,180
+2, 5.0VD, VOLT:DC,AUTO,2.0,2.1
+3, 12V, VOLT:DC,AUTO,2.0,2.1
+4, 7V, VOLT:DC,AUTO,2.0,2.1
+6,,VOLT:DC,AUTO,2.1,2.2
+7,,VOLT:DC,AUTO,1.0,1.1
+

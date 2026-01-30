@@ -40,3 +40,9 @@ check_visa_devices.py
 
 # OpenSpec
 #openspec/changes/archive/
+
+# Project structure
+# scripts/ - Keep helper scripts
+# assets/icons/ - Keep icon files
+# examples/ - Keep example CSV files
+# doc/ - Keep documentation

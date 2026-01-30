@@ -93,28 +93,81 @@ To connect to the actual SDM4055A-SC device:
 
 To create a standalone Windows executable:
 
+**Quick build (recommended):**
 ```bash
-build_exe.bat
+build\build_app.bat
+```
+
+**Or alternative build script:**
+```bash
+build\build_exe.bat
 ```
 
 The executable will be created in the `dist/` directory as `SDM4055A_Controller.exe`.
+
+**Note**: It's recommended to use a virtual environment for building:
+```bash
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+pip install pyinstaller
+build\build_app.bat
+```
 
 ## Project Structure
 
 ```
 SDM4055A_Controller/
 ├── main.py                 # Application entry point
-├── requirements.txt         # Python dependencies
-├── build_exe.bat          # PyInstaller build script
+├── version.py              # Application version
+├── requirements.txt        # Python dependencies
+├── README.md              # This file
+├── .gitignore             # Git ignore rules
+│
+├── build/                 # Build scripts and artifacts
+│   ├── build_app.bat      # Main build script (recommended)
+│   ├── build_exe.bat      # Alternative build script
+│   └── *.spec             # PyInstaller spec files
+│
+├── scripts/               # Helper and test scripts
+│   ├── create_icon.py     # Icon generation script
+│   └── test_*.py          # Test and development scripts
+│
+├── assets/                # Application assets
+│   └── icons/             # Icon files
+│       ├── app_icon.ico   # Main application icon
+│       └── app_icon_*.png # Icon previews
+│
+├── examples/              # Example configuration files
+│   ├── B1ComputerBoard.csv
+│   ├── B1ControlExtensionBoardv232.csv
+│   ├── Boreas_2v1.csv
+│   └── test1.csv
+│
+├── doc/                   # Documentation
+│   ├── BUILD_README.md
+│   ├── BUILD_SUMMARY.md
+│   ├── RANGE_*.md         # Range implementation docs
+│   └── *.md              # Other documentation
+│
 ├── gui/                   # GUI components
 │   ├── __init__.py
 │   ├── window.py          # Main application window
-│   └── widgets.py        # Custom widgets (DigitalIndicator)
+│   ├── widgets.py         # Custom widgets (DigitalIndicator)
+│   └── theme_manager.py   # Theme management
+│
 ├── hardware/              # Hardware abstraction layer
 │   ├── __init__.py
 │   ├── visa_interface.py  # VISA communication interface
-│   └── simulator.py      # Mock device simulator
-└── openspec/             # OpenSpec specifications
+│   ├── simulator.py       # Mock device simulator
+│   ├── async_worker.py    # Async scanning operations
+│   └── simple_scanner.py  # Simple scanner implementation
+│
+├── config/                # Configuration management
+│   ├── __init__.py
+│   └── config_loader.py   # Configuration file loader
+│
+└── openspec/              # OpenSpec specifications
     ├── project.md         # Project context and conventions
     ├── changes/           # Change proposals
     └── specs/            # Capability specifications
