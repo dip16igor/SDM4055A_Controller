@@ -308,16 +308,36 @@ class VisaSimulator:
                 f"Simulator: Unexpected error during read on channel {channel_num}: {e}")
             return None
 
-    def read_all_channels(self) -> Dict[int, Optional[ScanDataResult]]:
+    def read_all_channels(self, config_loader=None) -> Dict[int, Optional[ScanDataResult]]:
         """
         Simulate reading measurements from all 16 channels sequentially.
+        
+        When config_loader is provided, only scans channels from min to max configured channels.
+
+        Args:
+            config_loader: Optional ConfigLoader instance to determine scan range.
 
         Returns:
             Dictionary mapping channel numbers to ScanDataResult objects (or None if failed).
         """
         with QMutexLocker(self._mutex):
+            # Determine scan range based on config
+            scan_min = 1
+            scan_max = 16
+            if config_loader is not None:
+                min_channel = config_loader.get_min_channel()
+                max_channel = config_loader.get_max_channel()
+                if min_channel is not None and max_channel is not None:
+                    scan_min = min_channel
+                    scan_max = max_channel
+                    logger.info(f"Config-based scan range: channels {scan_min} to {scan_max}")
+                else:
+                    logger.info("No config loaded, scanning all channels (1-16)")
+            else:
+                logger.info("No config loader provided, scanning all channels (1-16)")
+            
             results = {}
-            for channel_num in range(1, 17):
+            for channel_num in range(scan_min, scan_max + 1):
                 results[channel_num] = self.read_channel_measurement(
                     channel_num)
             return results
