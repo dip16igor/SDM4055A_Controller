@@ -162,14 +162,14 @@ The system SHALL provide a button labeled "xlsx" next to "New Report File" butto
 - **AND** user can click it to export to Excel
 
 ### Requirement: Excel Export with Conditional Formatting
-The system SHALL export CSV report data to Excel (.xlsx) format with conditional formatting applied to measured value cells.
+The system SHALL export CSV report data to Excel (.xlsx) format with conditional formatting applied to measured value cells for configured channels only.
 
 #### Scenario: Export with valid report file
 - **WHEN** user clicks "xlsx" button and a valid CSV report file is selected
 - **THEN** file save dialog opens with default filename matching report filename but with .xlsx extension
 - **AND** user can choose save location
 - **AND** Excel file is created with all data from CSV report
-- **AND** conditional formatting is applied to measured value cells
+- **AND** conditional formatting is applied to measured value cells for configured channels only
 
 #### Scenario: Export without report file
 - **WHEN** user clicks "xlsx" button and no report file is selected
@@ -177,30 +177,30 @@ The system SHALL export CSV report data to Excel (.xlsx) format with conditional
 - **AND** no export is performed
 
 #### Scenario: Conditional formatting for values within thresholds
-- **WHEN** a measured value is within configured lower and upper thresholds
+- **WHEN** a measured value for a configured channel is within configured lower and upper thresholds
 - **THEN** cell background color is light green
 - **AND** color is light enough for black text to be clearly readable
 
 #### Scenario: Conditional formatting for values below lower threshold
-- **WHEN** a measured value is below configured lower threshold
+- **WHEN** a measured value for a configured channel is below configured lower threshold
 - **THEN** cell background color is light red
 - **AND** color is light enough for black text to be clearly readable
 
 #### Scenario: Conditional formatting for values above upper threshold
-- **WHEN** a measured value is above configured upper threshold
+- **WHEN** a measured value for a configured channel is above configured upper threshold
 - **THEN** cell background color is light red
 - **AND** color is light enough for black text to be clearly readable
 
 #### Scenario: Conditional formatting for values with only lower threshold
-- **WHEN** a measured value is below configured lower threshold (no upper threshold set)
+- **WHEN** a measured value for a configured channel is below configured lower threshold (no upper threshold set)
 - **THEN** cell background color is light red
 
 #### Scenario: Conditional formatting for values with only upper threshold
-- **WHEN** a measured value is above configured upper threshold (no lower threshold set)
+- **WHEN** a measured value for a configured channel is above configured upper threshold (no lower threshold set)
 - **THEN** cell background color is light red
 
 #### Scenario: Conditional formatting for values with no thresholds
-- **WHEN** a measured value has no thresholds configured for its channel
+- **WHEN** a measured value has no thresholds configured for its configured channel
 - **THEN** cell has no conditional formatting applied
 - **AND** cell uses default white background
 
@@ -208,6 +208,11 @@ The system SHALL export CSV report data to Excel (.xlsx) format with conditional
 - **WHEN** a cell contains no measurement data (empty string)
 - **THEN** cell has no conditional formatting applied
 - **AND** cell uses default white background
+
+#### Scenario: Conditional formatting applies only to configured channels
+- **WHEN** report contains only configured channels (e.g., CH1, CH3, CH5)
+- **THEN** conditional formatting is applied only to those configured channel columns
+- **AND** no formatting is applied to other columns
 
 #### Scenario: Color contrast
 - **WHEN** conditional formatting is applied to cells
@@ -454,34 +459,47 @@ The system SHALL provide functionality to create a new CSV report file with auto
 - **AND** no changes are made to UI
 
 ### Requirement: Report File Format
-The system SHALL write measurement results to CSV file with semicolon delimiter and specific column structure.
+The system SHALL write measurement results to CSV file with semicolon delimiter and dynamic column structure based on configured channels.
 
 #### Scenario: Report file header with custom names
 - **WHEN** report file is created or first row is written and channels have custom names configured
-- **THEN** header row contains: "QR", "TEST RESULT", custom channel names for channels 1-12, "Date/Time"
-- **AND** custom names are used instead of generic "Voltage1", "Voltage2", etc.
+- **THEN** header row contains: "QR", "TEST RESULT", channel columns for configured channels only, "Date/Time"
+- **AND** custom names are used instead of generic "CH1", "CH2", etc.
+- **AND** only channels explicitly defined in configuration file are included
 
 #### Scenario: Report file header without custom names
 - **WHEN** report file is created or first row is written and no custom names are configured
-- **THEN** header row contains: "QR", "TEST RESULT", "Voltage1" through "Voltage12", "Date/Time"
+- **THEN** header row contains: "QR", "TEST RESULT", generic channel names (e.g., "CH1", "CH2") for configured channels, "Date/Time"
+- **AND** only channels explicitly defined in configuration file are included
 
 #### Scenario: Report file header with mixed custom names
 - **WHEN** report file is created or first row is written and some channels have custom names while others do not
 - **THEN** header row uses custom names for channels that have them
-- **AND** uses generic names (e.g., "Voltage3") for channels without custom names
+- **AND** uses generic names (e.g., "CH3") for channels without custom names
+- **AND** only includes channels defined in configuration file
 
 #### Scenario: Report data row format
 - **WHEN** measurement results are written to report file
 - **THEN** row contains:
   - Column 1: Serial number from Serial Number input field
   - Column 2: "OK" if all measurements within thresholds, "FAILED <details>" otherwise
-  - Columns 3-14: Voltage measurements for channels 1-12 (empty for channels 13-16)
-  - Column 15: Current timestamp in "YYYY-MM-DD HH:MM:SS" format
+  - Subsequent columns: Measurements for configured channels only (in channel number order)
+  - Last column: Current timestamp in "YYYY-MM-DD HH:MM:SS" format
 
-#### Scenario: Only voltage channels in report
-- **WHEN** report row is written
-- **THEN** only channels 1-12 (voltage channels) are included in report
-- **AND** channels 13-16 (current channels) are not included
+#### Scenario: Dynamic column count based on configuration
+- **WHEN** configuration file defines only specific channels (e.g., channels 1, 3, 5, 13, 14)
+- **THEN** report contains only columns for those configured channels
+- **AND** unconfigured channels are not included in report
+
+#### Scenario: All channels configured
+- **WHEN** configuration file defines all 16 channels
+- **THEN** report contains columns for all 16 channels (CH1 through CH16)
+- **AND** column order follows channel number sequence
+
+#### Scenario: No configuration loaded
+- **WHEN** scan is performed without loading configuration file
+- **THEN** report write operation is skipped
+- **AND** warning is logged indicating no channels configured
 
 ### Requirement: Serial Number Validation Before Scan
 The system SHALL validate serial number format and presence before performing scan.
@@ -504,29 +522,34 @@ The system SHALL validate serial number format and presence before performing sc
 - **AND** results are written to report file
 
 ### Requirement: Measurement Validation Against Thresholds
-The system SHALL validate measurements against configured thresholds and generate appropriate result string.
+The system SHALL validate measurements against configured thresholds for configured channels only and generate appropriate result string.
 
 #### Scenario: All measurements within thresholds
-- **WHEN** all measured values are within configured thresholds
+- **WHEN** all measured values for configured channels are within configured thresholds
 - **THEN** TEST RESULT column contains "OK"
 - **AND** no failure details are included
 
 #### Scenario: Measurement below lower threshold
-- **WHEN** a measurement is below configured lower threshold
+- **WHEN** a measurement for a configured channel is below configured lower threshold
 - **THEN** TEST RESULT column contains "FAILED" with details
 - **AND** details include channel number, measured value, and expected range
 
 #### Scenario: Measurement above upper threshold
-- **WHEN** a measurement is above configured upper threshold
+- **WHEN** a measurement for a configured channel is above configured upper threshold
 - **THEN** TEST RESULT column contains "FAILED" with details
 - **AND** details include channel number, measured value, and expected range
 
 #### Scenario: Multiple measurements outside thresholds
-- **WHEN** multiple measurements are outside configured thresholds
+- **WHEN** multiple measurements for configured channels are outside configured thresholds
 - **THEN** TEST RESULT column contains "FAILED" with all failed channels separated by semicolons
 
+#### Scenario: Unconfigured channels ignored
+- **WHEN** measurements exist for channels not in configuration file
+- **THEN** those channels are not validated
+- **AND** they do not affect TEST RESULT
+
 #### Scenario: No thresholds configured
-- **WHEN** no thresholds are configured for any channel
+- **WHEN** no thresholds are configured for any configured channel
 - **THEN** TEST RESULT column contains "OK" (no validation performed)
 
 ### Requirement: Report Row Update
