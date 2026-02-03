@@ -227,5 +227,5 @@ channel,Name,measurement_type,range,lower_threshold,upper_threshold
 
 ---
 
-**Версия программы**: 1.7.2rc  
-**Дата**: 02.02.2026
+**Версия программы**: 1.7.3rc  
+**Дата**: 03.02.2026
