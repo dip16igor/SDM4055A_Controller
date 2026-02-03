@@ -679,6 +679,36 @@ class MainWindow(QMainWindow):
             # Set arrow color for device combo box
             self.device_combo.set_arrow_color("#000000")
 
+    def _get_serial_number_text_color(self) -> str:
+        """
+        Get the appropriate text color for serial number input based on current theme.
+
+        Returns:
+            CSS color string for the current theme.
+        """
+        return "#ffffff" if self._current_theme == "dark" else "#000000"
+
+    def _update_serial_number_color_for_theme(self) -> None:
+        """Update serial number input color based on current theme and validation state."""
+        serial_text = self.serial_number_input.text().strip()
+        pattern = r'^PSN\d{9}$'
+
+        if not serial_text:
+            # Empty input - use default color
+            self.serial_number_input.setStyleSheet("")
+        elif re.match(pattern, serial_text):
+            # Valid format - check if it exists in report
+            if self._check_serial_in_report(serial_text):
+                # Serial number exists in report - green color
+                self.serial_number_input.setStyleSheet("color: #51cf66; font-weight: bold;")
+            else:
+                # Serial number doesn't exist - use theme-appropriate color
+                text_color = self._get_serial_number_text_color()
+                self.serial_number_input.setStyleSheet(f"color: {text_color};")
+        else:
+            # Invalid format - red color
+            self.serial_number_input.setStyleSheet("color: red;")
+
     def _setup_connections(self) -> None:
         """Setup signal connections."""
         self.status_updated.connect(self.status_bar.showMessage)
@@ -887,6 +917,9 @@ class MainWindow(QMainWindow):
         # Update log viewer theme if open
         if self._log_viewer_dialog is not None and self._log_viewer_dialog.isVisible():
             self._log_viewer_dialog.update_theme(theme)
+
+        # Update serial number input color based on current state
+        self._update_serial_number_color_for_theme()
 
     def _start_scanning(self) -> None:
         """Start continuous scanning."""
@@ -1141,8 +1174,9 @@ class MainWindow(QMainWindow):
             self.serial_number_input.setStyleSheet("color: #51cf66; font-weight: bold;")
             logger.info(f"Serial number '{serial_number}' confirmed in report, set green color")
         else:
-            self.serial_number_input.setStyleSheet("color: white;")
-            logger.info(f"Serial number '{serial_number}' not found in report, set white color")
+            text_color = self._get_serial_number_text_color()
+            self.serial_number_input.setStyleSheet(f"color: {text_color};")
+            logger.info(f"Serial number '{serial_number}' not found in report, set theme color")
 
         # Update progress indicator
         self.scan_progress.complete_scan()
@@ -1532,8 +1566,9 @@ class MainWindow(QMainWindow):
                 self.serial_number_input.setStyleSheet("color: #51cf66; font-weight: bold;")
                 logger.debug(f"Valid serial number (exists in report): {text}")
             else:
-                # Serial number doesn't exist - white color
-                self.serial_number_input.setStyleSheet("color: white;")
+                # Serial number doesn't exist - use theme-appropriate color
+                text_color = self._get_serial_number_text_color()
+                self.serial_number_input.setStyleSheet(f"color: {text_color};")
                 logger.debug(f"Valid serial number (new): {text}")
         else:
             # Invalid format - red color
