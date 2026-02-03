@@ -13,7 +13,7 @@ from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
 from openpyxl.utils import get_column_letter
 
 from PySide6.QtCore import QObject, Signal, Slot, Qt
-from PySide6.QtGui import QAction, QMouseEvent, QIcon, QPainter, QPainterPath, QColor, QFontMetrics, QPixmap, QPen, QBrush, QFont
+from PySide6.QtGui import QAction, QMouseEvent, QIcon, QPainter, QPainterPath, QColor, QFontMetrics, QPixmap, QPen, QBrush, QFont, QKeyEvent, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -1377,6 +1377,31 @@ class MainWindow(QMainWindow):
 
         event.accept()
         logger.info("Application closed")
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        """Handle key press events for keyboard shortcuts.
+
+        Args:
+            event: Key event.
+        """
+        # Handle Enter/Return key - trigger Single Scan if enabled
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and event.modifiers() == Qt.KeyboardModifier.NoModifier:
+            if self.btn_single_scan.isEnabled():
+                logger.debug("Enter key pressed - triggering Single Scan")
+                self._single_scan()
+            return
+
+        # Handle Escape key - focus and clear serial number input
+        if event.key() == Qt.Key.Key_Escape:
+            logger.debug("Escape key pressed - focusing and clearing serial number input")
+            self.serial_number_input.clear()
+            self.serial_number_input.setFocus()
+            # Reset the cleared_on_click flag to allow click-to-clear behavior again
+            self.serial_number_input._cleared_on_click = False
+            return
+
+        # Call parent implementation for other keys
+        super().keyPressEvent(event)
 
     def _on_refresh_devices(self) -> None:
         """Handle refresh devices button click."""
