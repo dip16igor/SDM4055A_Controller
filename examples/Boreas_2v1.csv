@@ -1,39 +1,49 @@
-# SDM4055A-SC Channel Configuration File
+# Файл конфигурации каналов SDM4055A-SC
 # 
-# Format: channel,measurement_type,range,lower_threshold,upper_threshold
+# Формат: channel,measurement_type,range,lower_threshold,upper_threshold
 #
-# Columns:
-#   channel: Channel number (1-16)
-#   measurement_type: Measurement type (see valid types below)
-#   range: Measurement range (AUTO or specific value)
-#   lower_threshold: Optional lower threshold (leave empty for no threshold)
-#   upper_threshold: Optional upper threshold (leave empty for no threshold)
+# Столбцы:
+#   channel: Номер канала (1-16)
+#   measurement_type: Тип измерения (см. допустимые типы ниже)
+#   range: Диапазон измерения (AUTO или конкретное значение)
+#   lower_threshold: Нижний порог (необязательно, оставьте пустым если не нужен)
+#   upper_threshold: Верхний порог (необязательно, оставьте пустым если не нужен)
 #
-# Valid measurement types:
-#   VOLT:DC - DC Voltage
-#   VOLT:AC - AC Voltage
-#   RES - 2-Wire Resistance
-#   FRES - 4-Wire Resistance
-#   CAP - Capacitance
-#   FREQ - Frequency
-#   DIOD - Diode
-#   CONT - Continuity
-#   TEMP:RTD - RTD Temperature
-#   TEMP:THER - Thermocouple
-#   CURR:DC - DC Current (channels 13-16 only)
-#   CURR:AC - AC Current (channels 13-16 only)
+# Допустимые типы измерений:
+#   VOLT:DC - Постоянное напряжение (DC Voltage)
+#   VOLT:AC - Переменное напряжение (AC Voltage)
+#   RES - Сопротивление 2-проводное (2-Wire Resistance)
+#   FRES - Сопротивление 4-проводное (4-Wire Resistance)
+#   CAP - Емкость (Capacitance)
+#   FREQ - Частота (Frequency)
+#   DIOD - Диод (Diode)
+#   CONT - Проверка целостности (Continuity)
+#   TEMP:RTD - Температура RTD (RTD Temperature)
+#   TEMP:THER - Термопара (Thermocouple)
+#   CURR:DC - Постоянный ток (DC Current, только каналы 13-16)
+#   CURR:AC - Переменный ток (AC Current, только каналы 13-16)
 #
-# Notes:
-#   - Channels 1-12: Voltage, Resistance, Capacitance, etc.
-#   - Channels 13-16: Current measurements only
-#   - Thresholds are optional - leave empty if not needed
-#   - Values within thresholds display in GREEN
-#   - Values outside thresholds display in RED
-#   - You can configure only the channels you need
+# Допустимые диапазоны напряжения (VOLT:DC и VOLT:AC):
+#   200 mV - Поддерживается (используйте SLOW скорость для лучшей точности)
+#   2 V     - Поддерживается
+#   20 V    - Поддерживается
+#   200 V   - Поддерживается
+#   AUTO    - Поддерживается (автоматический выбор диапазона)
+#
+#   ПРИМЕЧАНИЕ: Диапазоны 1000 V и 750 V НЕ поддерживаются картой сканирования CS1016
+#   Максимальное напряжение: 125V AC, 110V DC (согласно спецификации безопасности)
+#
+# Примечания:
+#   - Каналы 1-12: Напряжение, сопротивление, емкость и т.д.
+#   - Каналы 13-16: Только измерения тока
+#   - Пороги необязательны - оставьте пустыми если не нужны
+#   - Значения в пределах порогов отображаются ЗЕЛЕНЫМ цветом
+#   - Значения вне порогов отображаются КРАСНЫМ цветом
+#   - Вы можете настроить только нужные вам каналы
 
-# Example configurations:
+# Примеры конфигураций:
 channel,Name,measurement_type,range,lower_threshold,upper_threshold
 1, 12.0V, VOLT:DC,AUTO,11.5,12.5
 2, 5.0V, VOLT:DC,AUTO,4.9,5.1
-3, 3.3V, VOLT:DC,AUTO,2.95,3.05
+3, 3.3V, VOLT:DC,AUTO,3.25,3.35
 #13, Current, CURR:DC, 2 A, 0.0, 1.0
