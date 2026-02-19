@@ -664,7 +664,9 @@ class ChannelIndicator(QWidget):
             # For fixed ranges, apply conversion factor
             conversion_factor = self.RANGE_TO_CONVERSION.get(range_value, 1)
             converted_value = value * conversion_factor
-            self.value_label.setText(f"{converted_value:.6f} {self._unit}")
+            # Get the correct unit for this range (not the device's base unit)
+            display_unit = self.RANGE_TO_UNIT.get(range_value, self._unit)
+            self.value_label.setText(f"{converted_value:.6f} {display_unit}")
         else:
             # For AUTO range, use the unit from device response
             # The device returns the value in the unit it selected (e.g., mV, V, etc.)
