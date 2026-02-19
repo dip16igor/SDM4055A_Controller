@@ -565,13 +565,17 @@ class VisaInterface:
 
         try:
             # Convert MeasurementType to CS1016 channel type
+            # NOTE: CS1016 scanning card uses different mode identifiers than standard SCPI
+            # - 2W for 2-wire resistance (not RES)
+            # - 4W for 4-wire resistance (not FRES)
+            # See: SDM-Series-Digital-Multimeter_ProgrammingGuide_EN02A.pdf page 131
             type_map = {
                 MeasurementType.VOLTAGE_DC: "DCV",
                 MeasurementType.VOLTAGE_AC: "ACV",
                 MeasurementType.CURRENT_DC: "DCI",  # DCI (not DCA) for DC current
                 MeasurementType.CURRENT_AC: "ACI",  # ACI (not ACA) for AC current
-                MeasurementType.RESISTANCE_2WIRE: "RES",
-                MeasurementType.RESISTANCE_4WIRE: "RES",
+                MeasurementType.RESISTANCE_2WIRE: "2W",  # CS1016 requires "2W" (not "RES")
+                MeasurementType.RESISTANCE_4WIRE: "4W",  # CS1016 requires "4W" (not "FRES")
                 MeasurementType.CAPACITANCE: "CAP",
                 MeasurementType.FREQUENCY: "FREQ",
                 MeasurementType.DIODE: "DIOD",
