@@ -670,12 +670,19 @@ class ChannelIndicator(QWidget):
             # The device returns the value in the unit it selected (e.g., mV, V, etc.)
             self.value_label.setText(f"{value:.6f} {self._unit}")
         
-        # Apply threshold-based color coding if enabled
+        # Apply threshold-based color coding if enabled, otherwise reset to default
         if self._thresholds_enabled:
             if range_value and range_value != "AUTO":
                 self._apply_threshold_color(converted_value, use_converted=True)
             else:
                 self._apply_threshold_color(value, use_converted=False)
+        else:
+            # Reset to default color (clears any previous error/status colors)
+            self.value_label.setStyleSheet(f"""
+                font-size: {self.VALUE_FONT_SIZE}pt;
+                font-weight: bold;
+                font-family: 'Consolas', 'Courier New', monospace;
+            """)
 
     def set_unit(self, unit: str) -> None:
         """
