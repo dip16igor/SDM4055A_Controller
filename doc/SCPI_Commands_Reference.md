@@ -303,21 +303,34 @@
 
 ---
 
-### `ROUT:CHAN <ch>,ON,<type>,AUTO,FAST`
+### `ROUT:CHAN <ch>,ON,<type>,<range>,<speed>`
 Настраивает канал для сканирования.
 
-**Синтаксис:** `ROUT:CHAN <ch>,ON,<type>,AUTO,FAST`
+**Синтаксис:** `ROUT:CHAN <ch>,ON,<type>,<range>,<speed>`
 
 **Параметры:**
 - `<ch>` - номер канала (1-16)
 - `ON` - включить канал
-- `<type>` - тип измерения: `DCV`, `ACV`, `DCA`, `ACA`, `RES`, `CAP`, `FREQ`, `DIOD`, `CONT`, `RTD`, `THER`
-- `AUTO` - автоматический выбор диапазона
-- `FAST` - быстрый режим
+- `<type>` - тип измерения: `DCV`, `DCI`, `ACV`, `ACI`, `2W`, `4W`, `CAP`, `FRQ`, `CONT`, `DIO`, `TEMP`
+- `<range>` - диапазон измерения (зависит от типа):
+  - `DCV`: `AUTO`, `200MLV`, `2V`, `20V`, `200V`
+  - `DCI`, `ACI`: `2A`
+  - `ACV`, `FRQ`: `AUTO`, `200MLV`, `2V`, `20V`, `200V`
+  - `2W`, `4W`: `AUTO`, `200OHM`, `2KOHM`, `20KOHM`, `200KOHM`, `2MGOHM`, `10MGOHM`, `100MGOHM`
+  - `CAP`: `AUTO`, `2NF`, `20NF`, `200NF`, `2UF`, `20UF`, `200UF`, `10000UF`
+- `<speed>` - скорость измерения: `SLOW`, `FAST`
 
-**Использование в проекте:** [`hardware/visa_interface.py:318`](hardware/visa_interface.py:318)
+**Использование в проекте:** [`hardware/visa_interface.py:597`](hardware/visa_interface.py:597)
 
-**Пример:** `ROUT:CHAN 1,ON,DCV,AUTO,FAST`
+**Примеры:**
+- `ROUT:CHAN 1,ON,2W,2KOHM,SLOW` - 2-проводное сопротивление, диапазон 2 кОм
+- `ROUT:CHAN 2,ON,DCV,AUTO,FAST` - постоянное напряжение, авто-диапазон
+
+**Примечание:** Для сканирующей карты CS1016 используются специфические идентификаторы режимов:
+- `2W` для 2-проводного сопротивления (не `RES`)
+- `4W` для 4-проводного сопротивления (не `FRES`)
+- `DCI` для постоянного тока (не `DCA`)
+- `ACI` для переменного тока (не `ACA`)
 
 ---
 
@@ -606,22 +619,24 @@
 
 ## Типы измерений в проекте
 
-В проекте используются следующие типы измерений (определены в [`hardware/visa_interface.py:15-28`](hardware/visa_interface.py:15-28)):
+В проекте используются следующие типы измерений (определены в [`hardware/visa_interface.py:25-38`](hardware/visa_interface.py:25-38)):
 
-| Тип измерения | SCPI команда | Описание |
-|--------------|--------------|-----------|
-| VOLTAGE_DC | `VOLT:DC` | Постоянное напряжение |
-| VOLTAGE_AC | `VOLT:AC` | Переменное напряжение |
-| CURRENT_DC | `CURR:DC` | Постоянный ток |
-| CURRENT_AC | `CURR:AC` | Переменный ток |
-| RESISTANCE_2WIRE | `RES` | Сопротивление (2 провода) |
-| RESISTANCE_4WIRE | `FRES` | Сопротивление (4 провода) |
-| CAPACITANCE | `CAP` | Ёмкость |
-| FREQUENCY | `FREQ` | Частота |
-| DIODE | `DIOD` | Тест диода |
-| CONTINUITY | `CONT` | Тест непрерывности |
-| TEMP_RTD | `TEMP:RTD` | Температура (RTD) |
-| TEMP_THERMOCOUPLE | `TEMP:THER` | Температура (термопара) |
+| Тип измерения | SCPI команда (стандартная) | CS1016 режим | Описание |
+|--------------|---------------------------|--------------|-----------|
+| VOLTAGE_DC | `VOLT:DC` | `DCV` | Постоянное напряжение |
+| VOLTAGE_AC | `VOLT:AC` | `ACV` | Переменное напряжение |
+| CURRENT_DC | `CURR:DC` | `DCI` | Постоянный ток |
+| CURRENT_AC | `CURR:AC` | `ACI` | Переменный ток |
+| RESISTANCE_2WIRE | `RES` | `2W` | Сопротивление (2 провода) |
+| RESISTANCE_4WIRE | `FRES` | `4W` | Сопротивление (4 провода) |
+| CAPACITANCE | `CAP` | `CAP` | Ёмкость |
+| FREQUENCY | `FREQ` | `FRQ` | Частота |
+| DIODE | `DIOD` | `DIOD` | Тест диода |
+| CONTINUITY | `CONT` | `CONT` | Тест непрерывности |
+| TEMP_RTD | `TEMP:RTD` | `RTD` | Температура (RTD) |
+| TEMP_THERMOCOUPLE | `TEMP:THER` | `THER` | Температура (термопара) |
+
+**Примечание:** Стандартные SCPI команды (например, `CONF:RES`, `MEAS:RES?`) используются для прямых измерений, а режимы CS1016 (например, `2W`, `4W`) используются только в команде `ROUT:CHAN` для настройки сканирующей карты.
 
 ---
 
