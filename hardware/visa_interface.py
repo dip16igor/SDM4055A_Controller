@@ -349,14 +349,14 @@ class VisaInterface:
         "20 uF": "20uF",
         "200 uF": "200uF",
         "10000 uF": "10000uF",
-        # Resistance ranges
+        # Resistance ranges (CS1016 format: uppercase K for kilo, MG for mega)
         "200 Ohm": "200OHM",
-        "2 kOhm": "2kOHM",
-        "20 kOhm": "20kOHM",
-        "200 kOhm": "200kOHM",
-        "2 MOhm": "2MOHM",
-        "10 MOhm": "10MOHM",
-        "100 MOhm": "100MOHM",
+        "2 kOhm": "2KOHM",   # Uppercase K (not lowercase k)
+        "20 kOhm": "20KOHM",  # Uppercase K (not lowercase k)
+        "200 kOhm": "200KOHM", # Uppercase K (not lowercase k)
+        "2 MOhm": "2MGOHM",   # MG (not M)
+        "10 MOhm": "10MGOHM",  # MG (not M)
+        "100 MOhm": "100MGOHM", # MG (not M)
         # AUTO range
         "AUTO": "AUTO",
     }
