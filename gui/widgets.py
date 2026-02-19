@@ -696,19 +696,30 @@ class ChannelIndicator(QWidget):
             error: If True, display status in red color.
         """
         self.value_label.setText(status)
+        # Preserve font size when setting status color
         if error:
-            self.value_label.setStyleSheet("color: #ff6b6b;")
+            self.value_label.setStyleSheet(f"""
+                color: #ff6b6b;
+                font-size: {self.VALUE_FONT_SIZE}pt;
+                font-weight: bold;
+                font-family: 'Consolas', 'Courier New', monospace;
+            """)
         else:
-            self.value_label.setStyleSheet("color: #51cf66;")
+            self.value_label.setStyleSheet(f"""
+                color: #51cf66;
+                font-size: {self.VALUE_FONT_SIZE}pt;
+                font-weight: bold;
+                font-family: 'Consolas', 'Courier New', monospace;
+            """)
 
     def reset_status(self) -> None:
         """Reset the value label to normal display."""
         self.value_label.setText(f"{self._value:.6f} {self._unit}")
         self.value_label.setStyleSheet(f"""
             font-size: {self.VALUE_FONT_SIZE}pt;
-                font-weight: bold;
-                font-family: 'Consolas', 'Courier New', monospace;
-            """)
+            font-weight: bold;
+            font-family: 'Consolas', 'Courier New', monospace;
+        """)
 
     def set_thresholds(self, lower: Optional[float] = None, upper: Optional[float] = None) -> None:
         """
