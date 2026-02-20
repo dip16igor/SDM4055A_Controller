@@ -5,6 +5,8 @@ import csv
 import logging
 import os
 import re
+import ctypes
+import sys
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
@@ -44,9 +46,19 @@ from config import ConfigLoader, ChannelThresholdConfig
 
 logger = logging.getLogger(__name__)
 
+# Windows API functions for keyboard layout switching
+user32 = ctypes.windll.user32
+kernel32 = ctypes.windll.kernel32
+
+# Load keyboard layout for English (US)
+# HKL = LoadKeyboardLayoutW(L"00000409", 0)
+# For Russian: L"00000419"
+ENGLISH_LAYOUT = ctypes.c_wchar_p("00000409")
+RUSSIAN_LAYOUT = ctypes.c_wchar_p("00000419")
+
 
 class ClickToClearLineEdit(QLineEdit):
-    """Custom QLineEdit that clears text when clicked."""
+    """Custom QLineEdit that clears text when clicked and forces English keyboard layout."""
 
     def __init__(self, parent=None):
         """Initialize the custom line edit.
@@ -56,6 +68,50 @@ class ClickToClearLineEdit(QLineEdit):
         """
         super().__init__(parent)
         self._cleared_on_click = False
+
+    def focusInEvent(self, event) -> None:
+        """Handle focus in event to switch keyboard layout to English.
+
+        Args:
+            event: Focus event.
+        """
+        # Switch keyboard layout to English
+        self._switch_to_english_layout()
+        logger.debug("Keyboard layout switched to English when serial number field received focus")
+        super().focusInEvent(event)
+
+    def _switch_to_english_layout(self) -> bool:
+        """Switch keyboard layout to English using Windows API.
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        try:
+            # Get current active window
+            hwnd = user32.GetForegroundWindow()
+            
+            # Load English keyboard layout
+            hkl_english = user32.LoadKeyboardLayoutW(ENGLISH_LAYOUT, 0)
+            
+            # Switch to English layout
+            if user32.ActivateKeyboardLayout(hkl_english, 0):
+                logger.debug("Successfully switched keyboard layout to English")
+                return True
+            else:
+                logger.warning("Failed to switch keyboard layout to English")
+                return False
+        except Exception as e:
+            logger.error(f"Error switching keyboard layout: {e}")
+            return False
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        """Handle key press events.
+
+        Args:
+            event: Key event.
+        """
+        # Allow all key presses (keyboard layout is already set to English)
+        super().keyPressEvent(event)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         """Handle mouse press event to clear text on click.
