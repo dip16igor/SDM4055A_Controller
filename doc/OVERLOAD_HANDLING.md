@@ -248,6 +248,7 @@ channel,Name,measurement_type,range,lower_threshold,upper_threshold
    - Updated scan complete handlers
    - Updated report writing logic
    - Updated validation logic
+   - Updated Excel conditional formatting (lines 1867-1877)
 
 2. [`gui/widgets.py`](gui/widgets.py)
    - Updated `set_value()` method
@@ -260,9 +261,10 @@ channel,Name,measurement_type,range,lower_threshold,upper_threshold
 
 The OVERLOAD handling has been improved to treat open circuit conditions as valid measurements:
 
-✅ **Display**: Shows "∞" in green (not as error)  
-✅ **Report**: Writes "∞" to CSV file (not empty)  
-✅ **Validation**: Always passes threshold checks (valid measurement)  
-✅ **User Experience**: Clear indication of open circuit state  
+✅ **Display**: Shows "∞" in green (not as error)
+✅ **CSV Report**: Writes "∞" to CSV file (not empty)
+✅ **Excel Export**: Colors "∞" cells green (valid open circuit)
+✅ **Validation**: Always passes threshold checks (valid measurement)
+✅ **User Experience**: Clear indication of open circuit state
 
 This makes the system more intuitive for continuity testing and quality control applications where open circuits are expected and valid test results.

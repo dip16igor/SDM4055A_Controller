@@ -1875,6 +1875,15 @@ class MainWindow(QMainWindow):
                                     empty_count += 1
                                     continue
 
+                                # Check for infinity symbol (OVERLOAD/open circuit)
+                                if cell_value.strip() == "∞":
+                                    # Infinity is always considered valid (passes thresholds)
+                                    cell = worksheet.cell(row=row_idx, column=col_idx)
+                                    cell.fill = light_green_fill
+                                    green_count += 1
+                                    logger.debug(f"Row {row_idx}, Col {col_name}: ∞ (OVERLOAD) -> GREEN (valid open circuit)")
+                                    continue
+                                
                                 # Parse value as float
                                 try:
                                     value = float(cell_value)
