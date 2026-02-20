@@ -33,21 +33,31 @@ class ChannelThresholdConfig:
         """
         Check if a value is within the configured thresholds.
         
+        This method properly handles single threshold scenarios:
+        - If only lower_threshold is set: value must be >= lower_threshold (green)
+        - If only upper_threshold is set: value must be <= upper_threshold (green)
+        - If both thresholds are set: value must be between them (lower <= value <= upper)
+        - If no thresholds are set: always returns True (no validation)
+        
         Args:
             value: The measured value to check.
             
         Returns:
             True if value is within thresholds (or no thresholds set), False otherwise.
         """
+        # No thresholds configured - always pass
         if self.lower_threshold is None and self.upper_threshold is None:
-            return True  # No thresholds configured
+            return True
         
+        # Check lower threshold (if set)
         if self.lower_threshold is not None and value < self.lower_threshold:
             return False
         
+        # Check upper threshold (if set)
         if self.upper_threshold is not None and value > self.upper_threshold:
             return False
         
+        # Value is within the configured threshold(s)
         return True
 
 
@@ -376,14 +386,18 @@ class ConfigLoader:
 #   - CS1016 scanning card has DIFFERENT range limitations than multimeter itself!
 #   - See doc/CS1016_Supported_Ranges.md for detailed information
 #   - Thresholds are optional - leave empty if not needed
-#   - Values within thresholds display in GREEN
-#   - Values outside thresholds display in RED
+#   - Threshold behavior:
+#     * If only lower_threshold is set: value must be >= lower_threshold to be GREEN
+#     * If only upper_threshold is set: value must be <= upper_threshold to be GREEN
+#     * If both thresholds are set: value must be between them (lower <= value <= upper) to be GREEN
+#     * If no thresholds are set: values always display in default color
 #   - You can configure only the channels you need
 #   - Custom names are optional and will be used in report headers
 #   - Whitespace around values is automatically stripped
 
 # Example configurations:
 channel,Name,measurement_type,range,lower_threshold,upper_threshold
+# Both thresholds configured (value must be between them)
 1,+3.3VD,VOLT:DC,AUTO,0,5
 2,+5/0VA,VOLT:DC,200 mV,0,0.2
 3,Test Point 3,VOLT:AC,AUTO,0,120
@@ -391,6 +405,14 @@ channel,Name,measurement_type,range,lower_threshold,upper_threshold
 5,CAP Channel,CAP,AUTO,1e-6,100e-6
 13,Current 1,CURR:DC,2 A,0,0.5
 14,Current 2,CURR:DC,2 A,0,1.5
+# Only lower threshold configured (value must be >= lower_threshold to be GREEN)
+6,Min Resistance,RES,AUTO,100,
+7,Min Voltage,VOLT:DC,AUTO,3.0,
+# Only upper threshold configured (value must be <= upper_threshold to be GREEN)
+8,Max Current,CURR:DC,2 A,,1.0
+9,Max Voltage,VOLT:AC,AUTO,,120
+# No thresholds (always displays in default color)
+10,No Thresholds,VOLT:DC,AUTO,,
 """
             
             with open(file_path, 'w', encoding='utf-8') as f:
