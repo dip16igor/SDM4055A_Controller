@@ -1238,6 +1238,10 @@ class MainWindow(QMainWindow):
             self.serial_number_input.setStyleSheet(f"color: {text_color};")
             logger.info(f"Serial number '{serial_number}' not found in report, set theme color")
 
+        # Clear serial number input after successful scan
+        self.serial_number_input.clear()
+        logger.debug("Serial number field cleared after scan")
+        
         # Update progress indicator
         self.scan_progress.complete_scan()
         self.status_updated.emit("Ready")
