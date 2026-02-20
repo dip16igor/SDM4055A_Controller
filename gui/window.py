@@ -858,6 +858,8 @@ class MainWindow(QMainWindow):
             range_value = self._channel_ranges[i]
             indicator.set_measurement_type(measurement_type)
             indicator.set_range(range_value)
+            # Clear custom channel name (default to empty)
+            indicator.set_channel_name("")
 
     @Slot(int, str)
     def _on_channel_measurement_type_changed(self, channel_num: int, measurement_type: str) -> None:
@@ -1545,12 +1547,16 @@ class MainWindow(QMainWindow):
                 # Set thresholds
                 indicator.set_thresholds(config.lower_threshold, config.upper_threshold)
                 
+                # Set channel name if specified
+                indicator.set_channel_name(config.name)
+                
                 logger.info(
                     f"Applied config to channel {channel_num}: "
                     f"type={config.measurement_type}, "
                     f"range={config.range_value}, "
                     f"lower={config.lower_threshold}, "
-                    f"upper={config.upper_threshold}"
+                    f"upper={config.upper_threshold}, "
+                    f"name={config.name}"
                 )
         
         # Mark unconfigured channels as gray
@@ -1559,6 +1565,7 @@ class MainWindow(QMainWindow):
             if i not in configured_channels:
                 indicator = self.channel_indicators[i - 1]
                 indicator.set_configured(False)
+                indicator.set_channel_name("")  # Clear custom name for unconfigured channels
                 logger.info(f"Channel {i} marked as unconfigured (gray)")
         
         logger.info(f"Applied configuration to {len(configured_channels)} channels: {configured_channels}")

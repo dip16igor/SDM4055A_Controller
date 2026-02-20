@@ -249,6 +249,7 @@ class ChannelIndicator(QWidget):
     
     measurement_type_changed = Signal(int, str)  # Signal emitted when measurement type changes (channel_num, type)
     range_changed = Signal(int, str)  # Signal emitted when range changes (channel_num, range_value)
+    channel_name_changed = Signal(int, str)  # Signal emitted when channel name changes (channel_num, name)
 
     # Mapping of measurement types to display units
     MEASUREMENT_TYPE_TO_UNIT = {
@@ -377,7 +378,7 @@ class ChannelIndicator(QWidget):
         layout.setContentsMargins(15, 15, 15, 15)
         layout.setSpacing(8)
 
-        # Channel number label
+        # Channel number label (will be updated with custom name if available)
         self.channel_label = QLabel(f"CH {self._channel_num}")
         self.channel_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         channel_font = QFont()
@@ -385,6 +386,9 @@ class ChannelIndicator(QWidget):
         channel_font.setBold(True)
         self.channel_label.setFont(channel_font)
         layout.addWidget(self.channel_label)
+        
+        # Initialize channel name
+        self._channel_name = ""
 
         # Value label (large, readable with inline unit)
         self.value_label = QLabel("0.0000 V")
@@ -463,6 +467,26 @@ class ChannelIndicator(QWidget):
         """
         self._is_configured = configured
         self._update_configured_style()
+    
+    def set_channel_name(self, name: str) -> None:
+        """
+        Set the custom name for this channel.
+        
+        Args:
+            name: Custom channel name (empty string to remove custom name).
+        """
+        self._channel_name = name
+        self._update_channel_label()
+        self.channel_name_changed.emit(self._channel_num, name)
+    
+    def get_channel_name(self) -> str:
+        """
+        Get the custom name for this channel.
+        
+        Returns:
+            Custom channel name (empty string if not set).
+        """
+        return self._channel_name
 
     def is_configured(self) -> bool:
         """
@@ -473,6 +497,15 @@ class ChannelIndicator(QWidget):
         """
         return self._is_configured
 
+    def _update_channel_label(self) -> None:
+        """Update channel label with custom name if available."""
+        if self._channel_name:
+            # Display custom name in parentheses: "CH 1 (Voltage1)"
+            self.channel_label.setText(f"CH {self._channel_num} ({self._channel_name})")
+        else:
+            # Display only channel number: "CH 1"
+            self.channel_label.setText(f"CH {self._channel_num}")
+    
     def _update_configured_style(self) -> None:
         """Update widget styling based on configured state."""
         if not self._is_configured:
