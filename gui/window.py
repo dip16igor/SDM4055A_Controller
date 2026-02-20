@@ -1238,10 +1238,6 @@ class MainWindow(QMainWindow):
             self.serial_number_input.setStyleSheet(f"color: {text_color};")
             logger.info(f"Serial number '{serial_number}' not found in report, set theme color")
 
-        # Clear serial number input after successful scan
-        self.serial_number_input.clear()
-        logger.debug("Serial number field cleared after scan")
-        
         # Update progress indicator
         self.scan_progress.complete_scan()
         self.status_updated.emit("Ready")
@@ -1648,6 +1644,23 @@ class MainWindow(QMainWindow):
         Args:
             text: Current text in the serial number input field.
         """
+        # Check if user is starting to type a new serial number
+        # If the field contains a previously scanned serial number and user starts typing
+        # a new one, clear the field and save the first character
+        if text and len(text) >= 4:
+            # Check if text starts with PSN and has more than 12 characters
+            # This indicates the user is typing a new serial number
+            if text.startswith('PSN') and len(text) > 12:
+                # User is typing a new serial number - save the first character
+                first_char = text[0] if text else ""
+                # Clear the field completely
+                self.serial_number_input.clear()
+                # Reinsert the first character immediately
+                self.serial_number_input.setText(first_char)
+                logger.debug(f"Cleared and restored first character '{first_char}' for new input")
+                # Return immediately to avoid processing the cleared text
+                return
+        
         # Validate serial number format: PSN followed by exactly 9 digits
         pattern = r'^PSN\d{9}$'
 
