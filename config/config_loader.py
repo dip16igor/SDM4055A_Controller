@@ -38,6 +38,7 @@ class ChannelThresholdConfig:
         - If only upper_threshold is set: value must be <= upper_threshold (green)
         - If both thresholds are set: value must be between them (lower <= value <= upper)
         - If no thresholds are set: always returns True (no validation)
+        - Infinity values (open circuit) are always considered valid measurements
         
         Args:
             value: The measured value to check.
@@ -47,6 +48,11 @@ class ChannelThresholdConfig:
         """
         # No thresholds configured - always pass
         if self.lower_threshold is None and self.upper_threshold is None:
+            return True
+        
+        # Check for infinity value (OVERLOAD/open circuit)
+        # Infinity is considered a valid measurement for open circuit conditions
+        if value == float('inf') or value == float('-inf'):
             return True
         
         # Check lower threshold (if set)

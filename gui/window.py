@@ -1038,8 +1038,9 @@ class MainWindow(QMainWindow):
                     # No data available for this channel
                     indicator.set_status("No data", error=True)
                 elif result.unit == "OVERLOAD":
-                    # Overload condition detected
-                    indicator.set_status(result.full_unit, error=True)
+                    # Overload condition detected (open circuit or too high resistance)
+                    # Display infinity symbol to indicate valid measurement (open circuit)
+                    indicator.set_value(float('inf'), result.full_unit if result.full_unit else "∞")
                 else:
                     # Valid measurement - update with value and unit
                     indicator.set_value(result.value, result.unit)
@@ -1158,8 +1159,9 @@ class MainWindow(QMainWindow):
                     # No data available for this channel
                     indicator.set_status("No data", error=True)
                 elif result.unit == "OVERLOAD":
-                    # Overload condition detected
-                    indicator.set_status(result.full_unit, error=True)
+                    # Overload condition detected (open circuit or too high resistance)
+                    # Display infinity symbol to indicate valid measurement (open circuit)
+                    indicator.set_value(float('inf'), result.full_unit if result.full_unit else "∞")
                 else:
                     # Valid measurement - update with value and unit
                     indicator.set_value(result.value, result.unit)
@@ -1251,8 +1253,9 @@ class MainWindow(QMainWindow):
                 # No data available for this channel
                 indicator.set_status("No data", error=True)
             elif isinstance(result, ScanDataResult) and result.unit == "OVERLOAD":
-                # Overload condition detected
-                indicator.set_status(result.full_unit, error=True)
+                # Overload condition detected (open circuit or too high resistance)
+                # Display infinity symbol to indicate valid measurement (open circuit)
+                indicator.set_value(float('inf'), result.full_unit if result.full_unit else "∞")
             elif isinstance(result, ScanDataResult):
                 # Valid measurement - update with value and unit
                 indicator.set_value(result.value, result.unit)
@@ -2075,7 +2078,9 @@ class MainWindow(QMainWindow):
                 continue
 
             if result.unit == "OVERLOAD":
-                logger.debug(f"Channel {channel_num}: OVERLOAD condition")
+                # Overload (open circuit) is a valid measurement, not an error
+                # Infinity value is considered valid for threshold checks
+                logger.debug(f"Channel {channel_num}: OVERLOAD (open circuit) - treating as valid measurement")
                 continue
 
             config = configs.get(channel_num)
@@ -2191,9 +2196,13 @@ class MainWindow(QMainWindow):
             result = measurements.get(channel_num)
             config = configs.get(channel_num)
 
-            if result is None or result.unit == "OVERLOAD":
+            if result is None:
                 row_data.append("")
-                logger.debug(f"Channel {channel_num}: No data or OVERLOAD, adding empty cell")
+                logger.debug(f"Channel {channel_num}: No data, adding empty cell")
+            elif result.unit == "OVERLOAD":
+                # Overload (open circuit) - write infinity symbol to report
+                row_data.append("∞")
+                logger.debug(f"Channel {channel_num}: OVERLOAD (open circuit), adding infinity symbol")
             elif config is None:
                 row_data.append("")
                 logger.debug(f"Channel {channel_num}: No configuration, adding empty cell")

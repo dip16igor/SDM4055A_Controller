@@ -658,6 +658,19 @@ class ChannelIndicator(QWidget):
         if unit is not None:
             self._unit = unit
         
+        # Check for infinity value (OVERLOAD/open circuit condition)
+        if value == float('inf') or value == float('-inf'):
+            # Display infinity symbol for overload/open circuit
+            self.value_label.setText(f"∞ {self._unit}")
+            # Apply green color for valid measurement (open circuit is valid)
+            self.value_label.setStyleSheet(f"""
+                color: #51cf66;
+                font-size: {self.VALUE_FONT_SIZE}pt;
+                font-weight: bold;
+                font-family: 'Consolas', 'Courier New', monospace;
+            """)
+            return
+        
         # Apply range-based value conversion
         range_value = self.range_combo.currentData()
         if range_value and range_value != "AUTO":
@@ -784,6 +797,23 @@ class ChannelIndicator(QWidget):
             use_converted: If True, use converted value for comparison.
         """
         if not self._thresholds_enabled:
+            return
+
+        # Check for infinity value (OVERLOAD/open circuit)
+        # Infinity is considered a valid measurement and should be green
+        if value == float('inf') or value == float('-inf'):
+            # Apply green color for infinity (valid open circuit measurement)
+            if self._current_theme == "dark":
+                green_color = "#51cf66"  # Bright green
+            else:
+                green_color = "#2e7d32"  # Darker green
+            
+            self.value_label.setStyleSheet(f"""
+                color: {green_color};
+                font-size: {self.VALUE_FONT_SIZE}pt;
+                font-weight: bold;
+                font-family: 'Consolas', 'Courier New', monospace;
+            """)
             return
 
         # Check if value is within thresholds
