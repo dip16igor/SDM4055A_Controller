@@ -979,8 +979,46 @@ class MainWindow(QMainWindow):
         # Update serial number input color based on current state
         self._update_serial_number_color_for_theme()
 
+    def _check_application_expiry(self) -> bool:
+        """Check if the application has expired and show update required dialog.
+        
+        Returns:
+            True if application is still valid (not expired), False if expired.
+        """
+        # Expiry date: 01.02.2027
+        expiry_date = datetime(2027, 2, 1)
+        current_date = datetime.now()
+        
+        if current_date > expiry_date:
+            # Application has expired - show blocking dialog
+            msg_box = QMessageBox(self)
+            msg_box.setIcon(QMessageBox.Icon.Critical)
+            msg_box.setWindowTitle("Application Update Required")
+            msg_box.setText("This application version has expired.\n\nPlease update to the latest version to continue using the application.")
+            msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+            msg_box.setModal(True)
+            
+            # Set minimum width to ensure text fits
+            msg_box.setMinimumWidth(500)
+            
+            # Make dialog non-closable except by clicking OK
+            msg_box.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.CustomizeWindowHint)
+            
+            # Show dialog and wait for user response
+            msg_box.exec()
+            
+            # Close the entire application after dialog is closed
+            QApplication.instance().quit()
+            return False
+        
+        return True
+    
     def _start_scanning(self) -> None:
         """Start continuous scanning."""
+        # Check if application has expired before starting scan
+        if not self._check_application_expiry():
+            return
+        
         # Check connection status based on mode
         if self._using_simulator:
             if not self.simulator.is_connected():
@@ -1029,6 +1067,10 @@ class MainWindow(QMainWindow):
 
     def _single_scan(self) -> None:
         """Perform a single scan of all channels."""
+        # Check if application has expired before starting scan
+        if not self._check_application_expiry():
+            return
+        
         # Check connection status based on mode
         if self._using_simulator:
             if not self.simulator.is_connected():
